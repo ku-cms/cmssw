@@ -4,6 +4,7 @@
   <use   name="FWCore/Framework"/>
   <use   name="FWCore/ParameterSet"/>
   <use   name="FWCore/MessageLogger"/>
+  <use   name="FWCore/ServiceRegistry"/>
   <use   name="DataFormats/HepMCCandidate"/>
   <use   name="SimDataFormats/GeneratorProducts"/>
   <use   name="SimGeneral/HepPDTRecord"/>
@@ -11,4 +12,5 @@
   <use   name="PhysicsTools/HepMCCandAlgos"/>
   <use   name="PhysicsTools/JetMCUtils"/>
   <use   name="CommonTools/Utils"/>
+  <use   name="CommonTools/UtilAlgos"/>
 </library>
