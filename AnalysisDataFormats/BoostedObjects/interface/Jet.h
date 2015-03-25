@@ -3,6 +3,11 @@
 
 #include "AnalysisDataFormats/BoostedObjects/interface/ResolvedVjj.h"
 
+/*\ 
+ * Simple Jet class to be used with B2G EDMNtuples
+ * https://github.com/cmsb2g/B2GAnaFW
+ */
+
 namespace vlq{
   class Jet : public Candidate {
 

@@ -3,12 +3,17 @@
  <version ClassVersion="10" checksum="548957944"/>
 </class>
 
+<class name="vlq::GenParticle" ClassVersion="10">
+ <version ClassVersion="10" checksum="57839716"/>
+</class>
+
 <class name="vlq::Jet" ClassVersion="13">
  <version ClassVersion="13" checksum="901612403"/>
  <version ClassVersion="12" checksum="1971238902"/>
  <version ClassVersion="11" checksum="2747855388"/>
 <version ClassVersion="10" checksum="468838756"/>
 </class>
+
 <class name="vlq::ResolvedVjj" ClassVersion="13">
  <version ClassVersion="13" checksum="1070015178"/>
  <version ClassVersion="12" checksum="617948693"/>
@@ -19,6 +24,10 @@
 <class name="edm::Wrapper<vlq::Candidate>"/>
 <class name="std::vector<vlq::Candidate>"/>
 <class name="edm::Wrapper<std::vector<vlq::Candidate> >"/>
+
+<class name="edm::Wrapper<vlq::GenParticle>"/>
+<class name="std::vector<vlq::GenParticle>"/>
+<class name="edm::Wrapper<std::vector<vlq::GenParticle> >"/>
 
 <class name="edm::Wrapper<vlq::Jet>"/>
 <class name="std::vector<vlq::Jet>"/>

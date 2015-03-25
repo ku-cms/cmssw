@@ -1,3 +1,4 @@
+#include "AnalysisDataFormats/BoostedObjects/interface/GenParticle.h" 
 #include "AnalysisDataFormats/BoostedObjects/interface/Jet.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/ResolvedVjj.h"
 #include "DataFormats/Common/interface/Wrapper.h"
@@ -8,6 +9,11 @@ namespace AnalysisDataFormats_BoostedObjects {
     edm::Wrapper<vlq::Candidate> w_vlqCandidate ;
     std::vector<vlq::Candidate> v_vlqCandidate ;
     edm::Wrapper<std::vector<vlq::Candidate> > w_v_vlqCandidate ;
+
+    vlq::GenParticle vlqGenParticle ; 
+    edm::Wrapper<vlq::GenParticle> w_vlqGenParticle ;
+    std::vector<vlq::GenParticle> v_vlqGenParticle ;
+    edm::Wrapper<std::vector<vlq::GenParticle> > w_v_vlqGenParticle ;
 
     vlq::Jet vlqjet ;
     edm::Wrapper<vlq::Jet> w_vlqJet ;

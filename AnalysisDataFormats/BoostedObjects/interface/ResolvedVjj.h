@@ -5,6 +5,12 @@
 
 #include "AnalysisDataFormats/BoostedObjects/interface/Candidate.h"
 
+/*\
+ * Simple class for bosons W, H, Z decaying to to quarks
+ * To be used with B2G EDMNtuples
+ * https://github.com/cmsb2g/B2GAnaFW
+ */
+
 namespace vlq { 
   class ResolvedVjj : public Candidate {
     public:
