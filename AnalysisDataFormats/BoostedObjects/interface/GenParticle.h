@@ -10,14 +10,14 @@ namespace vlq {
       ~GenParticle () {} 
 
       int getCharge () const {return charge_ ; }
-      int getPdgID_ () const { return pdgID_ ; }
-      int getMomPdgID_ () const { return momPdgID_ ; }
-      int getStatus_ () const { return status_ ; } 
+      int getPdgID () const { return pdgID_ ; }
+      int getMomPdgID () const { return momPdgID_ ; }
+      int getStatus () const { return status_ ; } 
 
       void setCharge ( const int charge ) {charge_ = charge ; }
-      void setPdgID_ ( const int pdgID )  { pdgID_ = pdgID ; }
-      void setMomPdgID_ ( const int momPdgID ) { momPdgID_ = momPdgID ; }
-      void setStatus_ ( const int status ) { status_ = status ; } 
+      void setPdgID ( const int pdgID )  { pdgID_ = pdgID ; }
+      void setMomPdgID ( const int momPdgID ) { momPdgID_ = momPdgID ; }
+      void setStatus ( const int status ) { status_ = status ; } 
 
     protected:
       int charge_ ; 
