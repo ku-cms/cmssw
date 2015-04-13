@@ -12,6 +12,8 @@
  */
 
 namespace vlq { 
+  class ResolvedVjj ; 
+  typedef std::vector<ResolvedVjj> ResolvedVjjCollection ; 
   class ResolvedVjj : public Candidate {
     public:
       ResolvedVjj () : drjj_(-1), mass_(-1), massdrop_(-1), scaledmassdrop_(-1), jetindex1_(-1), jetindex2_(-1) {}

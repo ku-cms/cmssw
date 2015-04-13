@@ -7,6 +7,10 @@
  <version ClassVersion="10" checksum="57839716"/>
 </class>
 
+<class name="vlq::GenParticleWithDaughters" ClassVersion="10">
+ <version ClassVersion="10" checksum="1103100465"/>
+</class>
+
 <class name="vlq::Jet" ClassVersion="13">
  <version ClassVersion="13" checksum="901612403"/>
  <version ClassVersion="12" checksum="1971238902"/>
@@ -24,6 +28,10 @@
 <class name="edm::Wrapper<vlq::Candidate>"/>
 <class name="std::vector<vlq::Candidate>"/>
 <class name="edm::Wrapper<std::vector<vlq::Candidate> >"/>
+
+<class name="edm::Wrapper<vlq::GenParticleWithDaughters>"/>
+<class name="std::vector<vlq::GenParticleWithDaughters>"/>
+<class name="edm::Wrapper<std::vector<vlq::GenParticleWithDaughters> >"/>
 
 <class name="edm::Wrapper<vlq::GenParticle>"/>
 <class name="std::vector<vlq::GenParticle>"/>

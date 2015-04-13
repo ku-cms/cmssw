@@ -8,11 +8,18 @@
 #include <TLorentzVector.h>
 
 namespace vlq{
+  class Candidate ; 
+  typedef std::vector<Candidate> CandidateCollection ; 
   class Candidate {
-
     public:
       Candidate () {}
       ~Candidate () {} 
+      Candidate ( const TLorentzVector& p4 ) :
+        p4_(p4) 
+      {}
+      Candidate (const vlq::Candidate& cand ) :
+        p4_(cand.getP4()) 
+      {}
       float getPt () const { return p4_.Pt() ; } 
       float getEta () const { return p4_.Eta() ; }
       float getPhi () const { return p4_.Phi() ; }

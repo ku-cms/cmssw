@@ -9,10 +9,10 @@
  */
 
 namespace vlq{
+  class Jet ;
+  typedef std::vector<Jet> JetCollection ; 
   class Jet : public Candidate {
-
     friend class vlq::ResolvedVjj ; 
-
     public:
       Jet () : index_(-1), partonFlavour_(-1), hadronFlavour_(-1), csvDiscrimiator_(-1000), 
       isbtagged_(0), istoptagged_(0), ishtagged_(0), iswtagged_(0) {}
