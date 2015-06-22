@@ -12,6 +12,15 @@
  <version ClassVersion="10" checksum="1103100465"/>
 </class>
 
+<class name="vlq::Electron" ClassVersion="11">
+ <version ClassVersion="11" checksum="3340555617"/>
+ <version ClassVersion="10" checksum="3761153883"/>
+</class>
+
+<class name="vlq::Muon" ClassVersion="10">
+ <version ClassVersion="10" checksum="1991137193"/>
+</class>
+
 <class name="vlq::Jet" ClassVersion="15">
  <version ClassVersion="15" checksum="2584536038"/>
  <version ClassVersion="14" checksum="2354134023"/>
@@ -40,6 +49,14 @@
 <class name="edm::Wrapper<vlq::GenParticle>"/>
 <class name="std::vector<vlq::GenParticle>"/>
 <class name="edm::Wrapper<std::vector<vlq::GenParticle> >"/>
+
+<class name="edm::Wrapper<vlq::Electron>"/>
+<class name="std::vector<vlq::Electron>"/>
+<class name="edm::Wrapper<std::vector<vlq::Electron> >"/>
+
+<class name="edm::Wrapper<vlq::Muon>"/>
+<class name="std::vector<vlq::Muon>"/>
+<class name="edm::Wrapper<std::vector<vlq::Muon> >"/>
 
 <class name="edm::Wrapper<vlq::Jet>"/>
 <class name="std::vector<vlq::Jet>"/>
