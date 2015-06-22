@@ -13,7 +13,7 @@ echo Starting $0 $1 $2
 if ( $2 == "" ) then
   set tables = ( GRun 50nsGRun )
 else if ( ($2 == all) || ($2 == ALL) ) then
-  set tables = ( GRun 50nsGRun HIon PIon 25ns14e33_v1 50ns_5e33_v1 Fake )
+  set tables = ( GRun 50nsGRun HIon PIon 25ns14e33_v1 50ns_5e33_v1 25ns14e33_v2 50ns_5e33_v2 Fake )
 else if ( ($2 == dev) || ($2 == DEV) ) then
   set tables = ( GRun 50nsGRun HIon PIon )
 else if ( ($2 == full) || ($2 == FULL) ) then
@@ -21,7 +21,7 @@ else if ( ($2 == full) || ($2 == FULL) ) then
 else if ( ($2 == fake) || ($2 == FAKE) ) then
   set tables = ( Fake )
 else if ( ($2 == frozen) || ($2 == FROZEN) ) then
-  set tables = ( 25ns14e33_v1 50ns_5e33_v1 Fake )
+  set tables = ( 25ns14e33_v1 50ns_5e33_v1 25ns14e33_v2 50ns_5e33_v2 Fake )
 else
   set tables = ( $2 )
 endif
@@ -78,22 +78,6 @@ foreach gtag ( $1 )
   end
 
 end
-
-# special fastsim integration test
-
-if ( $1 == MC ) then
-  foreach task ( IntegrationTestWithHLT_cfg )
-
-    echo
-    set name = ${task}
-    rm -f $name.{log,root}
-    echo "`date +%T` cmsRun $name.py >& $name.log"
-#   ls -l        $name.py
-    time  cmsRun $name.py >& $name.log
-    echo "`date +%T` exit status: $?"
-
-  end
-endif
 
 # separate hlt+reco and reco+(validation)+dqm workflows
 

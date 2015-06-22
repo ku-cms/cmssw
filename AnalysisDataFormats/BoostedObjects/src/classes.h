@@ -1,5 +1,7 @@
 #include "AnalysisDataFormats/BoostedObjects/interface/GenParticle.h" 
 #include "AnalysisDataFormats/BoostedObjects/interface/GenParticleWithDaughters.h" 
+#include "AnalysisDataFormats/BoostedObjects/interface/Electron.h"
+#include "AnalysisDataFormats/BoostedObjects/interface/Muon.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/Jet.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/ResolvedVjj.h"
 #include "DataFormats/Common/interface/Wrapper.h"
@@ -29,6 +31,16 @@ namespace AnalysisDataFormats_BoostedObjects {
 
     vlq::GenParticleWithDaughtersCollection vlqGenParticleWithDaughtersCollection ; 
     edm::Wrapper<vlq::GenParticleWithDaughtersCollection> w_vlqGenParticleWithDaughtersCollection ;
+
+    vlq::Electron vlqElectron ;
+    edm::Wrapper<vlq::Electron> w_vlqElectron ;
+    std::vector<vlq::Electron> v_vlqElectron ;
+    edm::Wrapper<std::vector<vlq::Electron> > w_v_vlqElectron ;
+
+    vlq::Muon vlqMuon ;
+    edm::Wrapper<vlq::Muon> w_vlqMuon ;
+    std::vector<vlq::Muon> v_vlqMuon ;
+    edm::Wrapper<std::vector<vlq::Muon> > w_v_vlqMuon ;
 
     vlq::Jet vlqJet ;
     edm::Wrapper<vlq::Jet> w_vlqJet ;
