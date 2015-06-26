@@ -17,8 +17,20 @@ namespace vlq {
   class ResolvedVjj : public Candidate {
     public:
       ResolvedVjj () : drjj_(-1), mass_(-1), massdrop_(-1), scaledmassdrop_(-1), jetindex1_(-1), jetindex2_(-1) {}
+      ResolvedVjj (const vlq::ResolvedVjj& cand) : 
+      vlq::Candidate(cand),
+      drjj_(cand.getDrjj()),
+      mass_(cand.getMass()),
+      massdrop_(cand.getMassDrop()),
+      scaledmassdrop_(cand.getScaledMassDrop()),
+      jetindex1_((cand.getJetIndices()).first), 
+      jetindex2_((cand.getJetIndices()).second)  
+    {}
       ~ResolvedVjj () {} 
 
+      float getDrjj () const { return drjj_ ; }
+      float getMass () const { return mass_ ; }
+      float getMassDrop () const { return massdrop_ ; }
       float getScaledMassDrop () const { return scaledmassdrop_ ; }
       std::pair<int,int>  getJetIndices () const { return std::pair<int, int>(jetindex1_, jetindex2_) ; }
 
