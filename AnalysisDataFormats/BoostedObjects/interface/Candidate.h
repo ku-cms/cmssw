@@ -17,7 +17,7 @@ namespace vlq{
       Candidate ( const TLorentzVector& p4 ) :
         p4_(p4) 
       {}
-      Candidate (const vlq::Candidate& cand ) 
+      Candidate (vlq::Candidate const & cand ) 
       { *this = cand ; }
       float getPt () const { return p4_.Pt() ; } 
       float getEta () const { return p4_.Eta() ; }
@@ -26,6 +26,10 @@ namespace vlq{
       float getMass () const { return p4_.Mag() ; } 
       TLorentzVector getP4() const { return p4_ ; }
       void setP4 ( const TLorentzVector& p4 ) { p4_ = p4 ; } 
+      const vlq::Candidate& operator=(vlq::Candidate const & cand) {
+        p4_ = cand.getP4() ; 
+        return *this ; 
+      }
     protected: 
       TLorentzVector p4_ ; 
   };
