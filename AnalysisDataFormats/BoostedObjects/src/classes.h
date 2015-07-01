@@ -37,10 +37,16 @@ namespace AnalysisDataFormats_BoostedObjects {
     std::vector<vlq::Electron> v_vlqElectron ;
     edm::Wrapper<std::vector<vlq::Electron> > w_v_vlqElectron ;
 
+    vlq::ElectronCollection vlqElectronCollection ;
+    edm::Wrapper<vlq::ElectronCollection> w_vlqElectronCollection ;
+
     vlq::Muon vlqMuon ;
     edm::Wrapper<vlq::Muon> w_vlqMuon ;
     std::vector<vlq::Muon> v_vlqMuon ;
     edm::Wrapper<std::vector<vlq::Muon> > w_v_vlqMuon ;
+
+    vlq::MuonCollection vlqMuonCollection ;
+    edm::Wrapper<vlq::MuonCollection> w_vlqMuonCollection ;
 
     vlq::Jet vlqJet ;
     edm::Wrapper<vlq::Jet> w_vlqJet ;
