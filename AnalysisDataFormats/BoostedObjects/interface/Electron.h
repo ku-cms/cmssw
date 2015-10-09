@@ -16,7 +16,31 @@ namespace vlq{
       Electron () : index_(-1) {} 
       Electron (const vlq::Electron& el) :
         vlq::Candidate(el),
-        index_(el.getIndex()) 
+        index_             (el.getIndex             () ),  
+        Charge_            (el.getCharge            () ), 
+        D0_                (el.getD0                () ), 
+        Dz_                (el.getDz                () ), 
+        E_                 (el.getE                 () ), 
+        Eta_               (el.getEta               () ), 
+        HoE_               (el.getHoE               () ), 
+        Iso03_             (el.getIso03             () ), 
+        Key_               (el.getKey               () ), 
+        Mass_              (el.getMass              () ), 
+        Phi_               (el.getPhi               () ), 
+        Pt_                (el.getPt                () ), 
+        Y_                 (el.getY                 () ), 
+        dEtaIn_            (el.getdEtaIn            () ), 
+        dPhiIn_            (el.getdPhiIn            () ), 
+        full5x5siee_       (el.getfull5x5siee       () ), 
+        hasMatchedConVeto_ (el.gethasMatchedConVeto () ), 
+        isEB_              (el.getisEB              () ), 
+        isLoose_           (el.getisLoose           () ), 
+        isMedium_          (el.getisMedium          () ), 
+        isTight_           (el.getisTight           () ), 
+        isVeto_            (el.getisVeto            () ), 
+        missHits_          (el.getmissHits          () ), 
+        ooEmooP_           (el.getooEmooP           () ), 
+        scEta_             (el.getscEta             () )  
     { } 
       ~Electron () {}
 
