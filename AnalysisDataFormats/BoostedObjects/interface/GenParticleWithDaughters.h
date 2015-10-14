@@ -14,16 +14,16 @@ namespace vlq {
       GenParticleWithDaughters () {}
       ~GenParticleWithDaughters () {} 
       GenParticleWithDaughters (const GenParticleWithDaughters& p) :
-        mom(p.getMom()),
+        moms(p.getMothers()),
         daus(p.getDaughters())
       {}
-      void setMom ( const vlq::GenParticle& p ) { 
-        mom.setCharge(p.getCharge()) ;
-        mom.setPdgID(p.getPdgID()) ;
-        mom.setMomPdgID(p.getMomPdgID());
-        mom.setStatus(p.getStatus()) ; 
-        mom.setP4(p.getP4()) ; 
-      }
+      void setMothers ( const vlq::GenParticleCollection& ps ) { 
+        GenParticleCollection::const_iterator it ;
+        for ( it = ps.begin(); it != ps.end(); ++it ) {
+          GenParticle mom(*it) ; 
+         moms.push_back(mom) ; 
+        }
+      } 
       void setDaughters ( const vlq::GenParticleCollection& ps ) { 
         GenParticleCollection::const_iterator it ;
         for ( it = ps.begin(); it != ps.end(); ++it ) {
@@ -31,10 +31,10 @@ namespace vlq {
           daus.push_back(dau) ; 
         }
       } 
-      vlq::GenParticle getMom () const { return  mom; }
+      vlq::GenParticleCollection getMothers () const { return  moms; }
       vlq::GenParticleCollection getDaughters () const { return daus ; }
     private: 
-      vlq::GenParticle mom ; 
+      vlq::GenParticleCollection moms ; 
       vlq::GenParticleCollection daus ; 
   }; 
 

@@ -3,12 +3,14 @@
  <version ClassVersion="10" checksum="548957944"/>
 </class>
 
-<class name="vlq::GenParticle" ClassVersion="11">
+<class name="vlq::GenParticle" ClassVersion="12">
+ <version ClassVersion="12" checksum="2622488537"/>
  <version ClassVersion="11" checksum="690863366"/>
  <version ClassVersion="10" checksum="57839716"/>
 </class>
 
-<class name="vlq::GenParticleWithDaughters" ClassVersion="10">
+<class name="vlq::GenParticleWithDaughters" ClassVersion="11">
+ <version ClassVersion="11" checksum="1803057721"/>
  <version ClassVersion="10" checksum="1103100465"/>
 </class>
 
