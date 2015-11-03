@@ -8,7 +8,7 @@
 namespace vlq {
   class GenParticleWithDaughters ; 
   typedef std::vector<GenParticleWithDaughters> GenParticleWithDaughtersCollection ;  
-  class GenParticleWithDaughters {
+  class GenParticleWithDaughters : public Candidate {
     friend class vlq::GenParticle ; 
     public:
       GenParticleWithDaughters () {}
