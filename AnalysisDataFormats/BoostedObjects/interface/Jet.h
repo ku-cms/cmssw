@@ -24,6 +24,9 @@ namespace vlq{
         partonFlavour_(jet.getPartonFlavour()),
         hadronFlavour_(jet.getHadronFlavour()), 
         csvDiscrimiator_(jet.getCSV()),
+        tau1_(jet.getTau1()),
+        tau2_(jet.getTau2()),
+        tau3_(jet.getTau3()),
         filteredMass_(jet.getFilteredMass()),
         trimmedMass_(jet.getTrimmedMass()),
         prunedMass_(jet.getPrunedMass()),
@@ -39,6 +42,9 @@ namespace vlq{
       int    getPartonFlavour () const { return partonFlavour_ ; } 
       int    getHadronFlavour () const { return hadronFlavour_ ; } 
       double getCSV () const { return csvDiscrimiator_ ; }
+      double getTau1         () const { return tau1_          ; }
+      double getTau2         () const { return tau2_          ; }
+      double getTau3         () const { return tau3_          ; }
       double getFilteredMass () const { return filteredMass_  ; }
       double getTrimmedMass () const { return  trimmedMass_ ; }
       double getPrunedMass () const { return prunedMass_ ; }
@@ -52,6 +58,9 @@ namespace vlq{
       void setPartonFlavour( const int& partonflavour) { partonFlavour_ = partonflavour ; } 
       void setHadronFlavour( const int& hadronflavour) { hadronFlavour_ = hadronflavour ; } 
       void setCSV( const double& csv) {csvDiscrimiator_ = csv ; } 
+      void setTau1         ( const double tau1 ) { tau1_ = tau1 ; }
+      void setTau2         ( const double tau2 ) { tau2_ = tau2 ; }
+      void setTau3         ( const double tau3 ) { tau3_ = tau3 ; }
       void setFilteredMass ( const double mass ) { filteredMass_ = mass ; }
       void setTrimmedMass ( const double mass ) { trimmedMass_ = mass ; }
       void setPrunedMass ( const double mass ) { prunedMass_ = mass ; }
@@ -68,6 +77,9 @@ namespace vlq{
       int hadronFlavour_ ; 
       double csvDiscrimiator_ ; 
 
+      double tau1_ ;
+      double tau2_ ;
+      double tau3_ ;
       double filteredMass_ ;
       double trimmedMass_ ;
       double prunedMass_ ; 
