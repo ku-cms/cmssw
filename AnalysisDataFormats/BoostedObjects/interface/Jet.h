@@ -37,6 +37,7 @@ namespace vlq{
         nsubjets_  (-1000), 
         csvSubjet0_(-1000), 
         csvSubjet1_(-1000), 
+        groomedMassCorr_(-1000), 
         isbtagged_(0), 
         istoptagged_(0), 
         ishtagged_(0), 
@@ -64,6 +65,7 @@ namespace vlq{
         nsubjets_  (jet.getNSubjets()),  
         csvSubjet0_(jet.getCSVSubjet0()),  
         csvSubjet1_(jet.getCSVSubjet1()),  
+        groomedMassCorr_(jet.getGrooomedMassCorr()),  
         isbtagged_(jet.getIsbtagged()),
         istoptagged_(jet.getIstoptagged()),
         ishtagged_(jet.getIshtagged()),
@@ -91,35 +93,37 @@ namespace vlq{
       int    getNSubjets   () const { return nsubjets_   ; } 
       double getCSVSubjet0 () const { return csvSubjet0_ ; } 
       double getCSVSubjet1 () const { return csvSubjet1_ ; } 
+      double getGrooomedMassCorr () const { return groomedMassCorr_ ; } 
       bool   getIsbtagged () const { return isbtagged_ ; } 
       bool   getIstoptagged () const { return istoptagged_ ; }
       bool   getIshtagged () const { return ishtagged_ ; }
       bool   getIswtagged () const { return iswtagged_ ; } 
 
-      void setIndex        ( const int& index) {index_ = index ; } 
-      void setPartonFlavour( const int& partonflavour) { partonFlavour_ = partonflavour ; } 
-      void setHadronFlavour( const int& hadronflavour) { hadronFlavour_ = hadronflavour ; } 
-      void setCSV          ( const double& csv    ) {csvDiscrimiator_ = csv ; } 
-      void setNHF          ( const double nhf     ) { nhf_  = nhf  ; }
-      void setCHF          ( const double chf     ) { chf_  = chf  ; }
-      void setEMF          ( const double emf     ) { emf_  = emf  ; }
-      void setPHF          ( const double phf     ) { phf_  = phf  ; }
-      void setMUF          ( const double muf     ) { muf_  = muf  ; }
-      void setNConsts      ( const int    nconsts ) { nconsts_  = nconsts  ; }
-      void setTau1         ( const double tau1    ) { tau1_ = tau1 ; }
-      void setTau2         ( const double tau2    ) { tau2_ = tau2 ; }
-      void setTau3         ( const double tau3    ) { tau3_ = tau3 ; }
-      void setFilteredMass ( const double mass    ) { filteredMass_ = mass ; }
-      void setTrimmedMass  ( const double mass    ) { trimmedMass_ = mass ; }
-      void setPrunedMass   ( const double mass    ) { prunedMass_ = mass ; }
-      void setSoftDropMass ( const double mass    ) { softDropMass_ = mass ; }
-      void setNSubjets     ( const int    nsubjets) { nsubjets_ = nsubjets; }
-      void setCSVSubjet0   ( const double csvSubjet0 ) { csvSubjet0_ = csvSubjet0 ; }
-      void setCSVSubjet1   ( const double csvSubjet1 ) { csvSubjet1_ = csvSubjet1 ; }
-      void setIsbtagged    ( const bool   isbtagged  ) { isbtagged_ = isbtagged ; } 
-      void setIstoptagged  ( const bool   istoptagged) { istoptagged_ = istoptagged ; }
-      void setIshtagged    ( const bool   ishtagged  ) { ishtagged_ = ishtagged ; }
-      void setIswtagged    ( const bool   iswtagged  ) { iswtagged_ = iswtagged ; } 
+      void setIndex             ( const int& index            ) {index_ = index ; } 
+      void setPartonFlavour     ( const int& partonflavour    ) { partonFlavour_ = partonflavour ; } 
+      void setHadronFlavour     ( const int& hadronflavour    ) { hadronFlavour_ = hadronflavour ; } 
+      void setCSV               ( const double& csv           ) {csvDiscrimiator_ = csv ; } 
+      void setNHF               ( const double nhf            ) { nhf_  = nhf  ; }
+      void setCHF               ( const double chf            ) { chf_  = chf  ; }
+      void setEMF               ( const double emf            ) { emf_  = emf  ; }
+      void setPHF               ( const double phf            ) { phf_  = phf  ; }
+      void setMUF               ( const double muf            ) { muf_  = muf  ; }
+      void setNConsts           ( const int    nconsts        ) { nconsts_  = nconsts  ; }
+      void setTau1              ( const double tau1           ) { tau1_ = tau1 ; }
+      void setTau2              ( const double tau2           ) { tau2_ = tau2 ; }
+      void setTau3              ( const double tau3           ) { tau3_ = tau3 ; }
+      void setFilteredMass      ( const double mass           ) { filteredMass_ = mass ; }
+      void setTrimmedMass       ( const double mass           ) { trimmedMass_ = mass ; }
+      void setPrunedMass        ( const double mass           ) { prunedMass_ = mass ; }
+      void setSoftDropMass      ( const double mass           ) { softDropMass_ = mass ; }
+      void setNSubjets          ( const int    nsubjets       ) { nsubjets_ = nsubjets; }
+      void setCSVSubjet0        ( const double csvSubjet0     ) { csvSubjet0_ = csvSubjet0 ; }
+      void setCSVSubjet1        ( const double csvSubjet1     ) { csvSubjet1_ = csvSubjet1 ; }
+      void setGrooomedMassCorr  ( const double groomedMassCorr) { groomedMassCorr_ = groomedMassCorr ; }
+      void setIsbtagged         ( const bool   isbtagged      ) { isbtagged_ = isbtagged ; } 
+      void setIstoptagged       ( const bool   istoptagged    ) { istoptagged_ = istoptagged ; }
+      void setIshtagged         ( const bool   ishtagged      ) { ishtagged_ = ishtagged ; }
+      void setIswtagged         ( const bool   iswtagged      ) { iswtagged_ = iswtagged ; } 
 
     protected:
 
@@ -146,6 +150,8 @@ namespace vlq{
       double nsubjets_ ; 
       double csvSubjet0_ ; 
       double csvSubjet1_ ; 
+
+      double groomedMassCorr_ ; 
 
       bool isbtagged_ ; 
       bool istoptagged_ ;
