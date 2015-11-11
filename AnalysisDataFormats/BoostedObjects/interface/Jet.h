@@ -123,7 +123,7 @@ namespace vlq{
       void setCSVSubjet0            ( const double csvSubjet0          ) { csvSubjet0_ = csvSubjet0 ; }
       void setCSVSubjet1            ( const double csvSubjet1          ) { csvSubjet1_ = csvSubjet1 ; }
       void setGroomedMassCorr       ( const double groomedMassCorr     ) { groomedMassCorr_ = groomedMassCorr ; }
-      void setNSubjetsBTaggedCSVL   ( const double nsubjetsBTaggedCSVL ) { nsubjetsBTaggedCSVL_ = nsubjetsBTaggedCSVL ; }
+      void setNSubjetsBTaggedCSVL   ( const int    nsubjetsBTaggedCSVL ) { nsubjetsBTaggedCSVL_ = nsubjetsBTaggedCSVL ; }
       void setIsbtagged             ( const bool   isbtagged           ) { isbtagged_ = isbtagged ; } 
       void setIstoptagged           ( const bool   istoptagged         ) { istoptagged_ = istoptagged ; }
       void setIshtagged             ( const bool   ishtagged           ) { ishtagged_ = ishtagged ; }
