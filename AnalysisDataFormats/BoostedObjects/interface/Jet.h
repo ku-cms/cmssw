@@ -65,7 +65,7 @@ namespace vlq{
         nsubjets_  (jet.getNSubjets()),  
         csvSubjet0_(jet.getCSVSubjet0()),  
         csvSubjet1_(jet.getCSVSubjet1()),  
-        groomedMassCorr_(jet.getGrooomedMassCorr()),  
+        groomedMassCorr_(jet.getGroomedMassCorr()),  
         isbtagged_(jet.getIsbtagged()),
         istoptagged_(jet.getIstoptagged()),
         ishtagged_(jet.getIshtagged()),
@@ -93,7 +93,7 @@ namespace vlq{
       int    getNSubjets   () const { return nsubjets_   ; } 
       double getCSVSubjet0 () const { return csvSubjet0_ ; } 
       double getCSVSubjet1 () const { return csvSubjet1_ ; } 
-      double getGrooomedMassCorr () const { return groomedMassCorr_ ; } 
+      double getGroomedMassCorr () const { return groomedMassCorr_ ; } 
       bool   getIsbtagged () const { return isbtagged_ ; } 
       bool   getIstoptagged () const { return istoptagged_ ; }
       bool   getIshtagged () const { return ishtagged_ ; }
@@ -119,7 +119,7 @@ namespace vlq{
       void setNSubjets          ( const int    nsubjets       ) { nsubjets_ = nsubjets; }
       void setCSVSubjet0        ( const double csvSubjet0     ) { csvSubjet0_ = csvSubjet0 ; }
       void setCSVSubjet1        ( const double csvSubjet1     ) { csvSubjet1_ = csvSubjet1 ; }
-      void setGrooomedMassCorr  ( const double groomedMassCorr) { groomedMassCorr_ = groomedMassCorr ; }
+      void setGroomedMassCorr   ( const double groomedMassCorr) { groomedMassCorr_ = groomedMassCorr ; }
       void setIsbtagged         ( const bool   isbtagged      ) { isbtagged_ = isbtagged ; } 
       void setIstoptagged       ( const bool   istoptagged    ) { istoptagged_ = istoptagged ; }
       void setIshtagged         ( const bool   ishtagged      ) { ishtagged_ = ishtagged ; }
