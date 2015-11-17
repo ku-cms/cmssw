@@ -67,7 +67,7 @@ namespace vlq{
         csvSubjet0_(jet.getCSVSubjet0()),  
         csvSubjet1_(jet.getCSVSubjet1()),  
         groomedMassCorr_(jet.getGroomedMassCorr()),  
-        nsubjetsBTaggedCSVL_(jet.getGroomedMassCorr()),  
+        nsubjetsBTaggedCSVL_(jet.getNSubjetsBTaggedCSVL()),  
         isbtagged_(jet.getIsbtagged()),
         istoptagged_(jet.getIstoptagged()),
         ishtagged_(jet.getIshtagged()),
@@ -96,7 +96,7 @@ namespace vlq{
       double getCSVSubjet0 () const { return csvSubjet0_ ; } 
       double getCSVSubjet1 () const { return csvSubjet1_ ; } 
       double getGroomedMassCorr () const { return groomedMassCorr_ ; } 
-      double getNSubjetsBTaggedCSVL () const { return nsubjetsBTaggedCSVL_ ; } 
+      int    getNSubjetsBTaggedCSVL () const { return nsubjetsBTaggedCSVL_ ; } 
       bool   getIsbtagged () const { return isbtagged_ ; } 
       bool   getIstoptagged () const { return istoptagged_ ; }
       bool   getIshtagged () const { return ishtagged_ ; }
