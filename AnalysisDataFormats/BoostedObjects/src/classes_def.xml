@@ -9,7 +9,8 @@
  <version ClassVersion="10" checksum="57839716"/>
 </class>
 
-<class name="vlq::GenParticleWithDaughters" ClassVersion="11">
+<class name="vlq::GenParticleWithDaughters" ClassVersion="12">
+ <version ClassVersion="12" checksum="1598674693"/>
  <version ClassVersion="11" checksum="1803057721"/>
  <version ClassVersion="10" checksum="1103100465"/>
 </class>
@@ -23,7 +24,8 @@
  <version ClassVersion="10" checksum="1991137193"/>
 </class>
 
-<class name="vlq::Jet" ClassVersion="15">
+<class name="vlq::Jet" ClassVersion="16">
+ <version ClassVersion="16" checksum="56731799"/>
  <version ClassVersion="15" checksum="2584536038"/>
  <version ClassVersion="14" checksum="2354134023"/>
  <version ClassVersion="13" checksum="901612403"/>
