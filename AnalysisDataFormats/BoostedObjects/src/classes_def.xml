@@ -35,6 +35,10 @@
 <version ClassVersion="10" checksum="468838756"/>
 </class>
 
+<class name="vlq::Met" ClassVersion="10">
+   <version ClassVersion="10" checksum="1871609811"/>
+</class>
+
 <class name="vlq::ResolvedVjj" ClassVersion="14">
  <version ClassVersion="14" checksum="1421398784"/>
  <version ClassVersion="13" checksum="1070015178"/>

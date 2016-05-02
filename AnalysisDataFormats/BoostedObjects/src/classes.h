@@ -1,6 +1,7 @@
 #include "AnalysisDataFormats/BoostedObjects/interface/GenParticle.h" 
 #include "AnalysisDataFormats/BoostedObjects/interface/GenParticleWithDaughters.h" 
 #include "AnalysisDataFormats/BoostedObjects/interface/Electron.h"
+#include "AnalysisDataFormats/BoostedObjects/interface/Met.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/Muon.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/Jet.h"
 #include "AnalysisDataFormats/BoostedObjects/interface/ResolvedVjj.h"
@@ -55,6 +56,14 @@ namespace AnalysisDataFormats_BoostedObjects {
 
     vlq::JetCollection vlqJetCollection ;
     edm::Wrapper<vlq::JetCollection> w_vlqJetCollection ;
+
+    vlq::Met vlqMet ;
+    edm::Wrapper<vlq::Met> w_vlqMet ;
+    std::vector<vlq::Met> v_vlqMet ;
+    edm::Wrapper<std::vector<vlq::Met> > w_v_vlqMet ;
+
+    vlq::MetCollection vlqMetCollection ;
+    edm::Wrapper<vlq::MetCollection> w_vlqMetCollection ;
 
     vlq::ResolvedVjj vlqResolvedVjj ;
     edm::Wrapper<vlq::ResolvedVjj> w_vlqResolvedVjj ; 
