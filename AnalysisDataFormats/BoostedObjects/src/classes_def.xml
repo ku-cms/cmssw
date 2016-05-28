@@ -24,7 +24,8 @@
  <version ClassVersion="10" checksum="1991137193"/>
 </class>
 
-<class name="vlq::Jet" ClassVersion="17">
+<class name="vlq::Jet" ClassVersion="18">
+ <version ClassVersion="18" checksum="748711631"/>
  <version ClassVersion="17" checksum="3647792420"/>
  <version ClassVersion="16" checksum="56731799"/>
  <version ClassVersion="15" checksum="2584536038"/>

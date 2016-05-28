@@ -21,6 +21,11 @@ namespace vlq{
         partonFlavour_(-1), 
         hadronFlavour_(-1), 
         csvDiscrimiator_(-1000), 
+        cmvaDiscrimiator_(-1000), 
+        CvsBDiscrimiator_(-1000), 
+        CvsLDiscrimiator_(-1000), 
+        doubleBAK8Discrimiator_(-1000), 
+        doubleBCA15Discrimiator_(-1000), 
         nhf_ (-1000), 
         chf_ (-1000), 
         emf_ (-1000), 
@@ -43,12 +48,19 @@ namespace vlq{
         etaSubjet1_(-1000), 
         csvSubjet0_(-1000), 
         csvSubjet1_(-1000), 
+        cmvaSubjet0_(-1000), 
+        cmvaSubjet1_(-1000), 
+        qSubjet0_(-1000), 
+        qSubjet1_(-1000), 
         groomedMassCorr_(-1000), 
         nsubjetsBTaggedCSVL_(-1000), 
         isbtagged_(0), 
         istoptagged_(0), 
         ishtagged_(0), 
-        iswtagged_(0) 
+        iswtagged_(0),
+        genJetP4_(-1000,-1000,-1000,-1000),
+        genSubJet0P4_(-1000,-1000,-1000,-1000),
+        genSubJet1P4_(-1000,-1000,-1000,-1000)
     {}
       Jet (const vlq::Jet& jet) :
         vlq::Candidate(jet),
@@ -56,6 +68,11 @@ namespace vlq{
         partonFlavour_(jet.getPartonFlavour()),
         hadronFlavour_(jet.getHadronFlavour()), 
         csvDiscrimiator_(jet.getCSV()),
+        cmvaDiscrimiator_(jet.getCMVA()),
+        CvsBDiscrimiator_(jet.getCvsB()),
+        CvsLDiscrimiator_(jet.getCvsL()),
+        doubleBAK8Discrimiator_(jet.getDoubleBAK8()),
+        doubleBCA15Discrimiator_(jet.getDoubleBCA15()),
         nhf_    (jet.getNHF     ()), 
         chf_    (jet.getCHF     ()), 
         emf_    (jet.getEMF     ()), 
@@ -78,12 +95,19 @@ namespace vlq{
         etaSubjet1_(jet.getEtaSubjet1()),  
         csvSubjet0_(jet.getCSVSubjet0()),  
         csvSubjet1_(jet.getCSVSubjet1()),  
+        cmvaSubjet0_(jet.getCMVASubjet0()),  
+        cmvaSubjet1_(jet.getCMVASubjet1()),  
+        qSubjet0_(jet.getQSubjet0()),  
+        qSubjet1_(jet.getQSubjet1()),  
         groomedMassCorr_(jet.getGroomedMassCorr()),  
         nsubjetsBTaggedCSVL_(jet.getNSubjetsBTaggedCSVL()),  
         isbtagged_(jet.getIsbtagged()),
         istoptagged_(jet.getIstoptagged()),
         ishtagged_(jet.getIshtagged()),
-        iswtagged_(jet.getIswtagged()) 
+        iswtagged_(jet.getIswtagged()),
+        genJetP4_(jet.getGenJetP4()),
+        genSubJet0P4_(jet.getGenJetP4()),
+        genSubJet1P4_(jet.getGenJetP4())
     { } 
       ~Jet () {}
 
@@ -91,6 +115,11 @@ namespace vlq{
       int    getPartonFlavour         () const { return partonFlavour_ ; } 
       int    getHadronFlavour         () const { return hadronFlavour_ ; } 
       double getCSV                   () const { return csvDiscrimiator_ ; }
+      double getCMVA                  () const { return cmvaDiscrimiator_ ; }
+      double getCvsB                  () const { return CvsBDiscrimiator_ ; }
+      double getCvsL                  () const { return CvsLDiscrimiator_ ; }
+      double getDoubleBAK8            () const { return doubleBAK8Discrimiator_ ; }
+      double getDoubleBCA15           () const { return doubleBCA15Discrimiator_ ; }
       double getNHF                   () const { return nhf_     ;}
       double getCHF                   () const { return chf_     ;}
       double getEMF                   () const { return emf_     ;}
@@ -113,17 +142,29 @@ namespace vlq{
       double getEtaSubjet1            () const { return etaSubjet1_ ; } 
       double getCSVSubjet0            () const { return csvSubjet0_ ; } 
       double getCSVSubjet1            () const { return csvSubjet1_ ; } 
+      double getCMVASubjet0           () const { return cmvaSubjet0_ ; } 
+      double getCMVASubjet1           () const { return cmvaSubjet1_ ; } 
+      double getQSubjet0              () const { return qSubjet0_ ; } 
+      double getQSubjet1              () const { return qSubjet1_ ; } 
       double getGroomedMassCorr       () const { return groomedMassCorr_ ; } 
       int    getNSubjetsBTaggedCSVL   () const { return nsubjetsBTaggedCSVL_ ; } 
       bool   getIsbtagged             () const { return isbtagged_ ; } 
       bool   getIstoptagged           () const { return istoptagged_ ; }
       bool   getIshtagged             () const { return ishtagged_ ; }
       bool   getIswtagged             () const { return iswtagged_ ; } 
+      TLorentzVector getGenJetP4      () const { return genJetP4_  ; }
+      TLorentzVector getGenSubJet0P4  () const { return genSubJet0P4_  ; }
+      TLorentzVector getGenSubJet1P4  () const { return genSubJet1P4_  ; }
 
-      void setIndex                 ( const int& index                 ) {index_ = index ; } 
-      void setPartonFlavour         ( const int& partonflavour         ) { partonFlavour_ = partonflavour ; } 
-      void setHadronFlavour         ( const int& hadronflavour         ) { hadronFlavour_ = hadronflavour ; } 
-      void setCSV                   ( const double& csv                ) {csvDiscrimiator_ = csv ; } 
+      void setIndex                 ( const int index                  ) {index_ = index ; } 
+      void setPartonFlavour         ( const int partonflavour          ) { partonFlavour_ = partonflavour ; } 
+      void setHadronFlavour         ( const int hadronflavour          ) { hadronFlavour_ = hadronflavour ; } 
+      void setCSV                   ( const double csv                 ) {csvDiscrimiator_ = csv ; } 
+      void setCMVA                  ( const double cmva                ) {cmvaDiscrimiator_ = cmva ; } 
+      void setCvsB                  ( const double CvsB                ) {CvsBDiscrimiator_ = CvsB ; } 
+      void setCvsL                  ( const double CvsL                ) {CvsLDiscrimiator_ = CvsL ; } 
+      void setDoubleBAK8            ( const double doubleBAK8          ) {doubleBAK8Discrimiator_ = doubleBAK8 ; } 
+      void setDoubleBCA15           ( const double doubleBCA15         ) {doubleBCA15Discrimiator_ = doubleBCA15 ; } 
       void setNHF                   ( const double nhf                 ) { nhf_  = nhf  ; }
       void setCHF                   ( const double chf                 ) { chf_  = chf  ; }
       void setEMF                   ( const double emf                 ) { emf_  = emf  ; }
@@ -146,12 +187,19 @@ namespace vlq{
       void setEtaSubjet1            ( const double etaSubjet1          ) { etaSubjet1_ = etaSubjet1 ; }
       void setCSVSubjet0            ( const double csvSubjet0          ) { csvSubjet0_ = csvSubjet0 ; }
       void setCSVSubjet1            ( const double csvSubjet1          ) { csvSubjet1_ = csvSubjet1 ; }
+      void setCMVASubjet0           ( const double cmvaSubjet0         ) { cmvaSubjet0_ = cmvaSubjet0 ; }
+      void setCMVASubjet1           ( const double cmvaSubjet1         ) { cmvaSubjet1_ = cmvaSubjet1 ; }
+      void setQSubjet0              ( const double qSubjet0            ) { qSubjet0_ = qSubjet0 ; }
+      void setQSubjet1              ( const double qSubjet1            ) { qSubjet1_ = qSubjet1 ; }
       void setGroomedMassCorr       ( const double groomedMassCorr     ) { groomedMassCorr_ = groomedMassCorr ; }
       void setNSubjetsBTaggedCSVL   ( const int    nsubjetsBTaggedCSVL ) { nsubjetsBTaggedCSVL_ = nsubjetsBTaggedCSVL ; }
       void setIsbtagged             ( const bool   isbtagged           ) { isbtagged_ = isbtagged ; } 
       void setIstoptagged           ( const bool   istoptagged         ) { istoptagged_ = istoptagged ; }
       void setIshtagged             ( const bool   ishtagged           ) { ishtagged_ = ishtagged ; }
       void setIswtagged             ( const bool   iswtagged           ) { iswtagged_ = iswtagged ; } 
+      void setGenJetP4              ( const TLorentzVector& p4         ) { genJetP4_ = p4 ; }
+      void setGenSubJet0P4          ( const TLorentzVector& p4         ) { genSubJet0P4_ = p4 ; }
+      void setGenSubJet1P4          ( const TLorentzVector& p4         ) { genSubJet1P4_ = p4 ; }
 
     protected:
 
@@ -159,6 +207,11 @@ namespace vlq{
       int partonFlavour_ ;
       int hadronFlavour_ ; 
       double csvDiscrimiator_ ; 
+      double cmvaDiscrimiator_ ; 
+      double CvsBDiscrimiator_ ; 
+      double CvsLDiscrimiator_ ; 
+      double doubleBAK8Discrimiator_ ; 
+      double doubleBCA15Discrimiator_ ; 
 
       double nhf_ ; 
       double chf_ ;
@@ -184,6 +237,10 @@ namespace vlq{
       double etaSubjet1_ ; 
       double csvSubjet0_ ; 
       double csvSubjet1_ ; 
+      double cmvaSubjet0_ ; 
+      double cmvaSubjet1_ ; 
+      double qSubjet0_ ; 
+      double qSubjet1_ ; 
 
       double groomedMassCorr_ ; 
       int    nsubjetsBTaggedCSVL_ ; 
@@ -192,6 +249,10 @@ namespace vlq{
       bool istoptagged_ ;
       bool ishtagged_ ;
       bool iswtagged_ ; 
+
+      TLorentzVector genJetP4_;
+      TLorentzVector genSubJet0P4_;
+      TLorentzVector genSubJet1P4_;
   }; 
 }
 
