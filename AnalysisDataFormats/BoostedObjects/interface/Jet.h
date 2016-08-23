@@ -46,6 +46,10 @@ namespace vlq{
         ptSubjet1_(-1000), 
         etaSubjet0_(-1000), 
         etaSubjet1_(-1000), 
+        phiSubjet0_(-1000), 
+        phiSubjet1_(-1000), 
+        energySubjet0_(-1000), 
+        energySubjet1_(-1000), 
         csvSubjet0_(-1000), 
         csvSubjet1_(-1000), 
         cmvaSubjet0_(-1000), 
@@ -93,6 +97,10 @@ namespace vlq{
         ptSubjet1_(jet.getPtSubjet1()),  
         etaSubjet0_(jet.getEtaSubjet0()),  
         etaSubjet1_(jet.getEtaSubjet1()),  
+        phiSubjet0_(jet.getEtaSubjet0()),  
+        phiSubjet1_(jet.getEtaSubjet1()),  
+        energySubjet0_(jet.getEtaSubjet0()),  
+        energySubjet1_(jet.getEtaSubjet1()),  
         csvSubjet0_(jet.getCSVSubjet0()),  
         csvSubjet1_(jet.getCSVSubjet1()),  
         cmvaSubjet0_(jet.getCMVASubjet0()),  
@@ -140,6 +148,10 @@ namespace vlq{
       double getPtSubjet1             () const { return ptSubjet1_ ; } 
       double getEtaSubjet0            () const { return etaSubjet0_ ; } 
       double getEtaSubjet1            () const { return etaSubjet1_ ; } 
+      double getPhiSubjet0            () const { return phiSubjet0_ ; } 
+      double getPhiSubjet1            () const { return phiSubjet1_ ; } 
+      double getEnergySubjet0         () const { return energySubjet0_ ; } 
+      double getEnergySubjet1         () const { return energySubjet1_ ; } 
       double getCSVSubjet0            () const { return csvSubjet0_ ; } 
       double getCSVSubjet1            () const { return csvSubjet1_ ; } 
       double getCMVASubjet0           () const { return cmvaSubjet0_ ; } 
@@ -185,6 +197,10 @@ namespace vlq{
       void setPtSubjet1             ( const double ptSubjet1           ) { ptSubjet1_ = ptSubjet1 ; }
       void setEtaSubjet0            ( const double etaSubjet0          ) { etaSubjet0_ = etaSubjet0 ; }
       void setEtaSubjet1            ( const double etaSubjet1          ) { etaSubjet1_ = etaSubjet1 ; }
+      void setPhiSubjet0            ( const double phiSubjet0          ) { phiSubjet0_ = phiSubjet0 ; }
+      void setPhiSubjet1            ( const double phiSubjet1          ) { phiSubjet1_ = phiSubjet1 ; }
+      void setEnergySubjet0         ( const double energySubjet0       ) { energySubjet0_ = energySubjet0 ; }
+      void setEnergySubjet1         ( const double energySubjet1       ) { energySubjet1_ = energySubjet1 ; }
       void setCSVSubjet0            ( const double csvSubjet0          ) { csvSubjet0_ = csvSubjet0 ; }
       void setCSVSubjet1            ( const double csvSubjet1          ) { csvSubjet1_ = csvSubjet1 ; }
       void setCMVASubjet0           ( const double cmvaSubjet0         ) { cmvaSubjet0_ = cmvaSubjet0 ; }
@@ -235,6 +251,10 @@ namespace vlq{
       double ptSubjet1_ ; 
       double etaSubjet0_ ; 
       double etaSubjet1_ ; 
+      double phiSubjet0_ ; 
+      double phiSubjet1_ ; 
+      double energySubjet0_ ; 
+      double energySubjet1_ ; 
       double csvSubjet0_ ; 
       double csvSubjet1_ ; 
       double cmvaSubjet0_ ; 
