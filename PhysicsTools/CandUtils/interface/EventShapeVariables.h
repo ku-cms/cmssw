@@ -68,6 +68,17 @@ class EventShapeVariables {
   /// sum{p_j[a]*p_j[b]}/sum{p_j**2} normalized to 1. Return value is between 0 and 1 
   /// and measures the 4-jet structure of the event (D vanishes for a planar event)
   double D(double = 2.) const;
+  ///
+  ///
+  ///
+  double thrust( int& numberOfSteps = 100 ) const;
+  ///
+  ///
+  ///
+  double thrustminor( int& numberOfSteps = 100 ) const;
+
+
+
   
  private:
   /// helper function to fill the 3 dimensional momentum tensor from the inputVectors where 
