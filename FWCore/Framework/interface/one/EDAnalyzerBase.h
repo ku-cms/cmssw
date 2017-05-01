@@ -63,25 +63,23 @@ namespace edm {
       // Warning: the returned moduleDescription will be invalid during construction
       ModuleDescription const& moduleDescription() const { return moduleDescription_; }
 
-    protected:
-      
       void callWhenNewProductsRegistered(std::function<void(BranchDescription const&)> const& func);
 
     private:
-      bool doEvent(EventPrincipal& ep, EventSetup const& c,
+      bool doEvent(EventPrincipal const& ep, EventSetup const& c,
                    ActivityRegistry*,
                    ModuleCallingContext const*);
       void doPreallocate(PreallocationConfiguration const&) {}
       void doBeginJob();
       void doEndJob();
       
-      void doBeginRun(RunPrincipal& rp, EventSetup const& c,
+      void doBeginRun(RunPrincipal const& rp, EventSetup const& c,
                       ModuleCallingContext const*);
-      void doEndRun(RunPrincipal& rp, EventSetup const& c,
+      void doEndRun(RunPrincipal const& rp, EventSetup const& c,
                     ModuleCallingContext const*);
-      void doBeginLuminosityBlock(LuminosityBlockPrincipal& lbp, EventSetup const& c,
+      void doBeginLuminosityBlock(LuminosityBlockPrincipal const& lbp, EventSetup const& c,
                                   ModuleCallingContext const*);
-      void doEndLuminosityBlock(LuminosityBlockPrincipal& lbp, EventSetup const& c,
+      void doEndLuminosityBlock(LuminosityBlockPrincipal const& lbp, EventSetup const& c,
                                 ModuleCallingContext const*);
       
       void doPreForkReleaseResources();

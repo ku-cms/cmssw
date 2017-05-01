@@ -9,6 +9,10 @@ WrapperDetail: Metafunction support for compile-time selection of code.
 
 #include <typeinfo>
 namespace edm {
+
+  //Need to specialize the case of std::vector<edm::Ptr<T>>
+  template<typename T> class Ptr;
+
   namespace detail {
     typedef char (& no_tag)[1]; // type indicating FALSE
     typedef char (& yes_tag)[2]; // type indicating TRUE
@@ -36,7 +40,6 @@ namespace edm {
       }
     };
 
-#ifndef __GCCXML__
     // valueTypeInfo_() will return typeid(T::value_type) if T::value_type is declared and typeid(void) otherwise.
     // Definitions for the following struct and function templates are not needed; we only require the declarations.
     template<typename T> static yes_tag& has_value_type(typename T::value_type*);
@@ -74,6 +77,16 @@ namespace edm {
     template<typename T> struct getMemberType<T, false> {
       std::type_info const& operator()() {
         return typeid(void);
+      }
+    };
+
+    template< typename T> struct has_typedef_member_type<std::vector<edm::Ptr<T> > > {
+      static const bool value = true;
+    };
+
+    template <typename T> struct getMemberType<std::vector<edm::Ptr<T> >, true> {
+      std::type_info const& operator()() {
+        return typeid(T);
       }
     };
 
@@ -148,7 +161,6 @@ namespace edm {
         return true; // Should never be called
       }
     };
-#endif
   }
 }
 #endif

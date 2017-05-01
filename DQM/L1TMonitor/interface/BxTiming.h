@@ -27,6 +27,7 @@
 #include "DataFormats/FEDRawData/interface/FEDTrailer.h"
 #include "DataFormats/FEDRawData/interface/FEDNumbering.h"
 #include "DQMServices/Core/interface/DQMEDAnalyzer.h"
+#include "DataFormats/Provenance/interface/EventAuxiliary.h"
 
 #define nfed_ FEDNumbering::MAXFEDID+1
 
@@ -106,10 +107,7 @@ class BxTiming : public DQMEDAnalyzer {
 
   MonitorElement* hBxOccyGtTrigType[nttype_]; // gt bx occupancy per trigger type
   MonitorElement**hBxOccyTrigBit[NSYS];       // subsystem bx occupancy per selected trigger bit
-  MonitorElement* runId_;
-  MonitorElement* lumisecId_;
-  MonitorElement* eventId_;
-  MonitorElement* runStartTimeStamp_;
+
 
 };
 

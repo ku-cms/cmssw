@@ -2,7 +2,6 @@
 #define Geometry_TrackerGeometryBuilder_TrackerGeometry_H
 
 #include "Geometry/CommonDetUnit/interface/TrackingGeometry.h"
-#include "Geometry/TrackerNumberingBuilder/interface/GeometricDet.h"
 #include "Geometry/CommonDetUnit/interface/GeomDetEnumerators.h"
 #include "Geometry/CommonDetUnit/interface/TrackerGeomDet.h"
 
@@ -42,6 +41,8 @@ class TrackerGeometry final : public TrackingGeometry {
 public:
   typedef GeomDetEnumerators::SubDetector SubDetector;
 
+  enum class ModuleType;
+ 
   virtual ~TrackerGeometry() ;
 
 
@@ -62,6 +63,9 @@ public:
   // Magic : better be called at the right moment...
   void setOffsetDU(SubDetector sid) { theOffsetDU[sid]=detUnits().size();}
   void setEndsetDU(SubDetector sid) { theEndsetDU[sid]=detUnits().size();}
+  void fillTestMap(const GeometricDet* gd);
+
+  ModuleType moduleType(const std::string& name) const;
 
   GeometricDet const * trackerDet() const {return  theTrackerDet;}
 
@@ -71,6 +75,10 @@ public:
   const DetContainer& detsTID() const;
   const DetContainer& detsTOB() const;
   const DetContainer& detsTEC() const;
+
+  ModuleType getDetectorType(DetId) const;
+  float getDetectorThickness(DetId) const;
+
 
 private:
 
@@ -98,9 +106,7 @@ private:
 
   GeomDetEnumerators::SubDetector theSubDetTypeMap[6];
   unsigned int theNumberOfLayers[6];
-
-  static const  GeomDetEnumerators::SubDetector geometricDetToGeomDet(GeometricDet::GDEnumType gdenum);
-
+  std::vector< std::tuple< DetId, TrackerGeometry::ModuleType, float> > theDetTypetList; 
 };
 
 #endif

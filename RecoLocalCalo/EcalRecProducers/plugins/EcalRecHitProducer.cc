@@ -223,7 +223,7 @@ EcalRecHitProducer::produce(edm::Event& evt, const edm::EventSetup& es)
                         for( std::set<EcalTrigTowerDetId>::const_iterator it = ttIds->begin(); it != ttIds->end(); ++it ) {
                                 // uses the EcalUncalibratedRecHit to pass the DetId info
                                 int ieta = (((*it).ietaAbs()-1)*5+1)*(*it).zside(); // from EcalTrigTowerConstituentsMap
-                                int iphi = ((*it).iphi()-1)*5+11;                   // from EcalTrigTowerConstituentsMap
+                                int iphi = (((*it).iphi()-1)*5+11)%360;             // from EcalTrigTowerConstituentsMap
                                 if( iphi <= 0 ) iphi += 360;                        // from EcalTrigTowerConstituentsMap
                                 EcalUncalibratedRecHit urh( EBDetId(ieta, iphi, EBDetId::ETAPHIMODE), 0, 0, 0, 0, EcalRecHitWorkerBaseClass::EB_FE );
                                 workerRecover_->run( evt, urh, *ebRecHits );
@@ -390,6 +390,7 @@ void EcalRecHitProducer::fillDescriptions(edm::ConfigurationDescriptions& descri
   desc.add<double>("EELaserMAX",8.0);
   desc.add<double>("logWarningEtThreshold_EB_FE",50);
   desc.add<bool>("recoverEEIsolatedChannels",false);
+  desc.add<bool>("skipTimeCalib",false);
   descriptions.add("ecalRecHit",desc);
 }
 

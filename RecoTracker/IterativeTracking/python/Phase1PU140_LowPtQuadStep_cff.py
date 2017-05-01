@@ -10,6 +10,7 @@ lowPtQuadStepClusters = trackClusterRemover.clone(
     trajectories                             = cms.InputTag("highPtTripletStepTracks"),
     pixelClusters                            = cms.InputTag("siPixelClusters"),
     stripClusters                            = cms.InputTag("siStripClusters"),
+    oldClusterRemovalInfo                    = cms.InputTag("highPtTripletStepClusters"),
     overrideTrkQuals                         = cms.InputTag('highPtTripletStepSelector','highPtTripletStep'),
     TrackQuality                             = cms.string('highPurity'),
     minNumberOfLayersWithMeasBeforeFiltering = cms.int32(0),
@@ -56,6 +57,8 @@ import RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cf
 lowPtQuadStepSeeds.OrderedHitsFactoryPSet.GeneratorPSet.SeedComparitorPSet = RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi.LowPtClusterShapeSeedComparitor
 lowPtQuadStepSeeds.ClusterCheckPSet.doClusterCheck = cms.bool(False)
 lowPtQuadStepSeeds.OrderedHitsFactoryPSet.GeneratorPSet.maxElement = cms.uint32(0)
+lowPtQuadStepSeeds.SeedCreatorPSet.magneticField = ''
+lowPtQuadStepSeeds.SeedCreatorPSet.propagator = 'PropagatorWithMaterial'
 
 # QUALITY CUTS DURING TRACK BUILDING
 import TrackingTools.TrajectoryFiltering.TrajectoryFilter_cff
@@ -71,8 +74,8 @@ lowPtQuadStepTrajectoryFilter = TrackingTools.TrajectoryFiltering.TrajectoryFilt
                  cms.PSet(refToPSet_ = cms.string('ClusterShapeTrajectoryFilter'))]
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-lowPtQuadStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+lowPtQuadStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
     ComponentName = cms.string('lowPtQuadStepChi2Est'),
     nSigma = cms.double(3.0),
     MaxChi2 = cms.double(25.0)
@@ -108,12 +111,9 @@ lowPtQuadStepTrackCandidates = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckf
 import RecoTracker.TrackProducer.TrackProducer_cfi
 lowPtQuadStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.clone(
     src = 'lowPtQuadStepTrackCandidates',
-    # Algorithm name changed from lowPtQuadStep (was iter2) to pixelPairStep in order
-    # to keep backward compatibility as detachedQuadStep would be unknown.
-    # In the future, a new enum or alias may be added to support iteration name aliases.
-    AlgorithmName = cms.string('pixelPairStep'),
+    AlgorithmName = cms.string('lowPtQuadStep'),
     Fitter = cms.string('FlexibleKFFittingSmoother'),
-    TTRHBuilder=cms.string('WithTrackAngle'), minGoodCharge = cms.double(2069)
+    TTRHBuilder=cms.string('WithTrackAngle')
     )
 
 from TrackingTools.TrajectoryCleaning.TrajectoryCleanerBySharedHits_cfi import trajectoryCleanerBySharedHits

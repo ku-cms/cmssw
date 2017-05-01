@@ -25,7 +25,6 @@
 #include "RecoMuon/TrackingTools/interface/MuonPatternRecoDumper.h"
 #include "TrackingTools/KalmanUpdators/interface/Chi2MeasurementEstimator.h"
 #include "TrackPropagation/SteppingHelixPropagator/interface/SteppingHelixPropagator.h"
-#include "SimTracker/TrackAssociation/interface/TrackAssociatorBase.h"
 #include "SimTracker/Records/interface/TrackAssociatorRecord.h"
 
 #define MAX_THR 1e7
@@ -379,16 +378,28 @@ void DynamicTruncation::preliminaryFit(map<int, vector<DetId> > compatibleIds, m
       getThresholdFromCFG(initThr, DetId(bestDTSeg.chamberId()));
       if (bestDTEstimator >= initThr) continue;
       prelFitMeas.push_back(theMuonRecHitBuilder->build(&bestDTSeg));
-      prelFitState = updatorHandle->update(tsosDTlayer, *theMuonRecHitBuilder->build(&bestDTSeg));
+      auto aSegRH = prelFitMeas.back();
+      auto uRes = updatorHandle->update(tsosDTlayer, *aSegRH);
+      if (uRes.isValid()){
+	prelFitState = uRes;
+      } else {
+	prelFitMeas.pop_back();
+      }
     } else {
       getThresholdFromCFG(initThr, DetId(bestCSCSeg.cscDetId()));
       if (bestCSCEstimator >= initThr) continue;
       prelFitMeas.push_back(theMuonRecHitBuilder->build(&bestCSCSeg));
-      prelFitState = updatorHandle->update(tsosCSClayer, *theMuonRecHitBuilder->build(&bestCSCSeg));
+      auto aSegRH = prelFitMeas.back();
+      auto uRes = updatorHandle->update(tsosCSClayer, *aSegRH);
+      if (uRes.isValid()){
+	prelFitState = uRes;
+      } else {
+	prelFitMeas.pop_back();
+      }
     }
   }
   if (!prelFitMeas.empty()) prelFitMeas.pop_back();
-  for (ConstRecHitContainer::const_iterator imrh = prelFitMeas.end(); imrh != prelFitMeas.begin(); imrh-- ) {
+  for (auto imrh = prelFitMeas.rbegin(); imrh != prelFitMeas.rend(); ++imrh) {
     DetId id = (*imrh)->geographicalId(); 
     TrajectoryStateOnSurface tmp = propagatorPF->propagate(prelFitState, theG->idToDet(id)->surface());
     if (tmp.isValid()) prelFitState = tmp; 

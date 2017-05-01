@@ -59,7 +59,7 @@ void L2TauPixelIsoTagProducer::produce(edm::StreamID sid, edm::Event& ev, const 
   }
   else
   {
-    jetTagCollection.reset( new JetTagCollection( RefToBaseProd<Jet>( *jets_h.product() ) ) );
+    jetTagCollection.reset( new JetTagCollection( RefToBaseProd<Jet>( jets_h ) ) );
   }
   // by default, initialize all the jets as isolated:
   for (const auto &jet : jets)  (*jetTagCollection)[jet] = 0.f;
@@ -98,7 +98,8 @@ void L2TauPixelIsoTagProducer::produce(edm::StreamID sid, edm::Event& ev, const 
 
         float dr2 = deltaR2 (jet_eta, jet_phi, (*tr)->eta(), (*tr)->phi());
 
-        if (dr2 >= m_isoCone2Min && dr2 <= m_isoCone2Max) iso += 1.;
+        // sum pT based isolation
+        if (dr2 >= m_isoCone2Min && dr2 <= m_isoCone2Max) iso += (*tr)->pt();
       }
 
       (*jetTagCollection)[jet] = iso;

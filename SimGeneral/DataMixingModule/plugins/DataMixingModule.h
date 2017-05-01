@@ -35,13 +35,14 @@
 #include "SimGeneral/DataMixingModule/plugins/DataMixingSiStripRawWorker.h"
 #include "SimGeneral/DataMixingModule/plugins/DataMixingSiPixelWorker.h"
 #include "SimGeneral/DataMixingModule/plugins/DataMixingSiPixelMCDigiWorker.h"
-#include "SimGeneral/DataMixingModule/plugins/DataMixingGeneralTrackWorker.h"
+#include "SimGeneral/DataMixingModule/plugins/DataMixingTrackingParticleWorker.h"
 #include "SimGeneral/DataMixingModule/plugins/DataMixingPileupCopy.h"
 
 #include <map>
 #include <vector>
 #include <string>
 
+class DigiAccumulatorMixMod;
 
 namespace edm {
 
@@ -52,7 +53,7 @@ namespace edm {
     public:
 
       /** standard constructor*/
-      explicit DataMixingModule(const edm::ParameterSet& ps);
+      explicit DataMixingModule(const edm::ParameterSet& ps, MixingCache::Config const* globalConf);
 
       /**Default destructor*/
       virtual ~DataMixingModule();
@@ -117,11 +118,8 @@ namespace edm {
       // SiPixels
       std::string PixelDigiCollectionDM_  ; // secondary name to be given to new SiPixel digis
 
-      // Tracks
-      std::string GeneralTrackCollectionDM_;
-      // FastSimulation or not?
-
-      bool DoFastSim_;
+      // merge tracker digis or tracks?
+      bool MergeTrackerDigis_;
 
       // Submodules to handle the individual detectors
 
@@ -180,7 +178,12 @@ namespace edm {
 
       // Tracks
 
-      DataMixingGeneralTrackWorker *GeneralTrackWorker_;
+      DigiAccumulatorMixMod * GeneralTrackWorker_;
+
+
+      // Validation
+
+      DataMixingTrackingParticleWorker * TrackingParticleWorker_ ;
 
       virtual void getSubdetectorNames();  
 

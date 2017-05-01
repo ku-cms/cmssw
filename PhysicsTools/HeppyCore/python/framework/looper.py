@@ -4,13 +4,13 @@
 import os
 import sys
 import imp
-# import copy
 import logging
 import pprint
-from platform import platform 
 from math import ceil
 from event import Event
 import timeit
+import resource
+import json
 
 class Setup(object):
     '''The Looper creates a Setup object to hold information relevant during 
@@ -52,7 +52,11 @@ class Looper(object):
     def __init__( self, name,
                   config, 
                   nEvents=None,
-                  firstEvent=0, nPrint=0, timeReport=False ):
+                  firstEvent=0,
+                  nPrint=0,
+                  timeReport=False,
+                  quiet=False,
+                  memCheckFromEvent=-1):
         """Handles the processing of an event sample.
         An Analyzer is built for each Config.Analyzer present
         in sequence. The Looper can then be used to process an event,
@@ -66,12 +70,15 @@ class Looper(object):
         nPrint  : number of events to print at the beginning
         """
 
+        self.config = config
         self.name = self._prepareOutput(name)
         self.outDir = self.name
         self.logger = logging.getLogger( self.name )
         self.logger.addHandler(logging.FileHandler('/'.join([self.name,
                                                              'log.txt'])))
-        self.logger.addHandler( logging.StreamHandler(sys.stdout) )
+        self.logger.propagate = False
+        if not quiet: 
+            self.logger.addHandler( logging.StreamHandler(sys.stdout) )
 
         self.cfg_comp = config.components[0]
         self.classes = {}
@@ -80,22 +87,32 @@ class Looper(object):
         self.firstEvent = firstEvent
         self.nPrint = int(nPrint)
         self.timeReport = [ {'time':0.0,'events':0} for a in self.analyzers ] if timeReport else False
+        self.memReportFirstEvent = memCheckFromEvent
+        self.memLast=0
         tree_name = None
         if( hasattr(self.cfg_comp, 'tree_name') ):
             tree_name = self.cfg_comp.tree_name
         if len(self.cfg_comp.files)==0:
             errmsg = 'please provide at least an input file in the files attribute of this component\n' + str(self.cfg_comp)
             raise ValueError( errmsg )
-        self.events = config.events_class(self.cfg_comp.files, tree_name)
+        if hasattr(config,"preprocessor") and config.preprocessor is not None :
+              self.cfg_comp = config.preprocessor.run(self.cfg_comp,self.outDir,firstEvent,nEvents)
+        if hasattr(self.cfg_comp,"options"):
+              print self.cfg_comp.files,self.cfg_comp.options
+              self.events = config.events_class(self.cfg_comp.files, tree_name,options=self.cfg_comp.options)
+        else :
+              self.events = config.events_class(self.cfg_comp.files, tree_name)
         if hasattr(self.cfg_comp, 'fineSplit'):
             fineSplitIndex, fineSplitFactor = self.cfg_comp.fineSplit
             if fineSplitFactor > 1:
                 if len(self.cfg_comp.files) != 1:
-                    raise RuntimeError, "Any component with fineSplit > 1 is supposed to have just a single file, while %s has %s" % (self.cfg_comp.name, self.cfg_comp.files)
+                    raise RuntimeError("Any component with fineSplit > 1 is supposed to have just a single file, while %s has %s" % (self.cfg_comp.name, self.cfg_comp.files))
                 totevents = min(len(self.events),int(nEvents)) if (nEvents and int(nEvents) not in [-1,0]) else len(self.events)
                 self.nEvents = int(ceil(totevents/float(fineSplitFactor)))
                 self.firstEvent = firstEvent + fineSplitIndex * self.nEvents
-                #print "For component %s will process %d events starting from the %d one" % (self.cfg_comp.name, self.nEvents, self.firstEvent)
+                if self.firstEvent + self.nEvents >= totevents:
+                    self.nEvents = totevents - self.firstEvent 
+                #print "For component %s will process %d events starting from the %d one, ending at %d excluded" % (self.cfg_comp.name, self.nEvents, self.firstEvent, self.nEvents + self.firstEvent)
         # self.event is set in self.process
         self.event = None
         services = dict()
@@ -144,11 +161,11 @@ class Looper(object):
         else:
             nEvents = int(nEvents)
         eventSize = nEvents
-        self.logger.warning(
+        self.logger.info(
             'starting loop at event {firstEvent} '\
                 'to process {eventSize} events.'.format(firstEvent=firstEvent,
                                                         eventSize=eventSize))
-        self.logger.warning( str( self.cfg_comp ) )
+        self.logger.info( str( self.cfg_comp ) )
         for analyzer in self.analyzers:
             analyzer.beginLoop(self.setup)
         try:
@@ -170,13 +187,36 @@ class Looper(object):
 
         except UserWarning:
             print 'Stopped loop following a UserWarning exception'
+
+        info = self.logger.info
+        warning = self.logger.warning
+        warning('number of events processed: {nEv}'.format(nEv=iEv+1))
+        warning('')
+        info( self.cfg_comp )
+        info('')        
         for analyzer in self.analyzers:
             analyzer.endLoop(self.setup)
-        warn = self.logger.warning
-        warn('')
-        warn( self.cfg_comp )
-        warn('')
-        warn('number of events processed: {nEv}'.format(nEv=iEv+1))
+        if self.timeReport:
+            allev = max([x['events'] for x in self.timeReport])
+            warning("\n      ---- TimeReport (all times in ms; first evt is skipped) ---- ")
+            warning("%9s   %9s    %9s   %9s %6s   %s" % ("processed","all evts","time/proc", " time/all", "  [%] ", "analyer"))
+            warning("%9s   %9s    %9s   %9s %6s   %s" % ("---------","--------","---------", "---------", " -----", "-------------"))
+            sumtime = sum(rep['time'] for rep in self.timeReport)
+            passev  = self.timeReport[-1]['events']
+            for ana,rep in zip(self.analyzers,self.timeReport):
+                timePerProcEv = rep['time']/(rep['events']-1) if rep['events'] > 1 else 0
+                timePerAllEv  = rep['time']/(allev-1)         if allev > 1         else 0
+                fracAllEv     = rep['time']/sumtime
+                warning( "%9d   %9d   %10.2f  %10.2f %5.1f%%   %s" % ( rep['events'], allev, 1000*timePerProcEv, 1000*timePerAllEv, 100.0*fracAllEv, ana.name))
+            totPerProcEv = sumtime/(passev-1) if passev > 1 else 0
+            totPerAllEv  = sumtime/(allev-1)  if allev > 1  else 0
+            warning("%9s   %9s    %9s   %9s   %s" % ("---------","--------","---------", "---------", "-------------"))
+            warning("%9d   %9d   %10.2f  %10.2f %5.1f%%   %s" % ( passev, allev, 1000*totPerProcEv, 1000*totPerAllEv, 100.0, "TOTAL"))
+            warning("")
+        if hasattr(self.events, 'endLoop'): self.events.endLoop()
+        if hasattr(self.config,"preprocessor") and self.config.preprocessor is not None:
+              if hasattr(self.config.preprocessor,"endLoop"):
+                  self.config.preprocessor.endLoop(self.cfg_comp)
 
     def process(self, iEv ):
         """Run event processing for all analyzers in the sequence.
@@ -189,15 +229,27 @@ class Looper(object):
         self.iEvent = iEv
         for i,analyzer in enumerate(self.analyzers):
             if not analyzer.beginLoopCalled:
-                analyzer.beginLoop()
+                analyzer.beginLoop(self.setup)
             start = timeit.default_timer()
+            if self.memReportFirstEvent >=0 and iEv >= self.memReportFirstEvent:           
+                memNow=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                if memNow > self.memLast :
+                   print  "Mem Jump detected before analyzer %s at event %s. RSS(before,after,difference) %s %s %s "%( analyzer.name, iEv, self.memLast, memNow, memNow-self.memLast)
+                self.memLast=memNow
             ret = analyzer.process( self.event )
+            if self.memReportFirstEvent >=0 and iEv >= self.memReportFirstEvent:           
+                memNow=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                if memNow > self.memLast :
+                   print "Mem Jump detected in analyzer %s at event %s. RSS(before,after,difference) %s %s %s "%( analyzer.name, iEv, self.memLast, memNow, memNow-self.memLast)
+                self.memLast=memNow
             if self.timeReport:
                 self.timeReport[i]['events'] += 1
                 if self.timeReport[i]['events'] > 0:
                     self.timeReport[i]['time'] += timeit.default_timer() - start
             if ret == False:
                 return (False, analyzer.name)
+        if iEv<self.nPrint:
+            self.logger.info( self.event.__str__() )
         return (True, analyzer.name)
 
     def write(self):
@@ -209,33 +261,37 @@ class Looper(object):
             analyzer.write(self.setup)
         self.setup.close() 
 
-        if self.timeReport:
-            allev = max([x['events'] for x in self.timeReport])
-            print "\n      ---- TimeReport (all times in ms; first evt is skipped) ---- "
-            print "%9s   %9s    %9s   %9s   %s" % ("processed","all evts","time/proc", " time/all", "analyer")
-            print "%9s   %9s    %9s   %9s   %s" % ("---------","--------","---------", "---------", "-------------")
-            for ana,rep in zip(self.analyzers,self.timeReport):
-                print "%9d   %9d   %10.2f  %10.2f   %s" % ( rep['events'], allev, 1000*rep['time']/(rep['events']-1) if rep['events']>1 else 0, 1000*rep['time']/(allev-1) if allev > 1 else 0, ana.name)
-            print ""
-        pass
-
 
 if __name__ == '__main__':
 
     import pickle
     import sys
     import os
-    if len(sys.argv) == 2 :
-        cfgFileName = sys.argv[1]
+    from PhysicsTools.HeppyCore.framework.heppy_loop import _heppyGlobalOptions
+    from optparse import OptionParser
+    parser = OptionParser(usage='%prog cfgFileName compFileName [--options=optFile.json]')
+    parser.add_option('--options',dest='options',default='',help='options json file')
+    (options,args) = parser.parse_args()
+
+    if options.options!='':
+        jsonfilename = options.options
+        jfile = open (jsonfilename, 'r')
+        opts=json.loads(jfile.readline())
+        for k,v in opts.iteritems():
+            _heppyGlobalOptions[k]=v
+        jfile.close()
+
+    if len(args) == 1 :
+        cfgFileName = args[0]
         pckfile = open( cfgFileName, 'r' )
         config = pickle.load( pckfile )
         comp = config.components[0]
         events_class = config.events_class
-    elif len(sys.argv) == 3 :
-        cfgFileName = sys.argv[1]
+    elif len(args) == 2 :
+        cfgFileName = args[0]
         file = open( cfgFileName, 'r' )
         cfg = imp.load_source( 'cfg', cfgFileName, file)
-        compFileName = sys.argv[2]
+        compFileName = args[1]
         pckfile = open( compFileName, 'r' )
         comp = pickle.load( pckfile )
         cfg.config.components=[comp]
@@ -244,3 +300,4 @@ if __name__ == '__main__':
     looper = Looper( 'Loop', cfg.config,nPrint = 5)
     looper.loop()
     looper.write()
+

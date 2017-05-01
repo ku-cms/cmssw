@@ -5,6 +5,7 @@
 #include "RecoParticleFlow/PFProducer/interface/PFElectronAlgo.h"  
 #include "RecoParticleFlow/PFProducer/interface/PFPhotonAlgo.h"    
 #include "RecoParticleFlow/PFProducer/interface/PFElectronExtraEqual.h"
+#include "RecoParticleFlow/PFTracking/interface/PFTrackAlgoTools.h"
 
 #include "RecoParticleFlow/PFClusterTools/interface/PFEnergyCalibration.h"
 #include "RecoParticleFlow/PFClusterTools/interface/PFEnergyCalibrationHF.h"
@@ -798,7 +799,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	PFBlockElement::Type type = elements[iEle].type();
 	if(type==PFBlockElement::TRACK)
 	  {
-	    if(elements[iEle].trackRef()->algo() == 12) // should not be reco::TrackBase::conversionStep ?
+	    if(elements[iEle].trackRef()->algo() == reco::TrackBase::conversionStep)
 	      active[iEle]=false;	
 	    if(elements[iEle].trackRef()->quality(reco::TrackBase::highPurity))continue;
 	    const reco::PFBlockElementTrack * trackRef = dynamic_cast<const reco::PFBlockElementTrack*>((&elements[iEle]));
@@ -1136,9 +1137,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 
       if ( rejectTracks_Step45_ && ecalElems.empty() && 
 	   trackMomentum > 30. && Dpt > 0.5 && 
-	   ( trackRef->algo() == TrackBase::mixedTripletStep || 
-	     trackRef->algo() == TrackBase::pixelLessStep || 
-	     trackRef->algo() == TrackBase::tobTecStep ) ) {
+	   ( PFTrackAlgoTools::step45(trackRef->algo())) ) {  
 
 	double dptRel = Dpt/trackRef->pt()*100;
 	bool isPrimaryOrSecondary = isFromSecInt(elements[iTrack], "all");
@@ -1475,7 +1474,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	  // Skip muons
 	  if ( (*pfCandidates_)[tmpi[ic]].particleId() == reco::PFCandidate::mu ) continue; 
 
-	  double fraction = (*pfCandidates_)[tmpi[ic]].trackRef()->p()/trackMomentum;
+	  double fraction = trackMomentum > 0 ? (*pfCandidates_)[tmpi[ic]].trackRef()->p()/trackMomentum : 0;
 	  double ecalCal = bNeutralProduced ? 
 	    (calibEcal-neutralEnergy*slopeEcal)*fraction : calibEcal*fraction;
 	  double ecalRaw = totalEcal*fraction;
@@ -1933,41 +1932,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
       // ... blow up errors of 5th anf 4th iteration, to reject those
       // ... tracks first (in case it's needed)
       double Dpt = trackRef->ptError();
-      double blowError = 1.;
-      switch (trackRef->algo()) {
-      case TrackBase::ctf:
-      case TrackBase::initialStep:
-      case TrackBase::lowPtTripletStep:
-      case TrackBase::pixelPairStep:
-      case TrackBase::detachedTripletStep:
-      case TrackBase::mixedTripletStep:
-      case TrackBase::jetCoreRegionalStep:
-      case TrackBase::muonSeededStepInOut:
-      case TrackBase::muonSeededStepOutIn:
-	blowError = 1.;
-	break;
-      case TrackBase::pixelLessStep:
-	blowError = factors45_[0];
-	break;
-      case TrackBase::tobTecStep:
-	blowError = factors45_[1];
-	break;
-      case reco::TrackBase::hltIter0:
-      case reco::TrackBase::hltIter1:
-      case reco::TrackBase::hltIter2:
-      case reco::TrackBase::hltIter3:
-	blowError = 1.;
-	break;
-      case reco::TrackBase::hltIter4:
-	blowError = factors45_[0];
-	break;
-      case reco::TrackBase::hltIterX:
-	blowError = 1.;
-	break;
-      default:
-	blowError = 1E9;
-	break;
-      }
+      double blowError = PFTrackAlgoTools::errorScale(trackRef->algo(),factors45_);
       // except if it is from an interaction
       bool isPrimaryOrSecondary = isFromSecInt(elements[iTrack], "all");
 
@@ -2253,7 +2218,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	    PFClusterRef hoclusterref = elements[iHO].clusterRef();
 	    (*pfCandidates_)[tmpi].addElementInBlock( blockref, iHO);
 	    muonHO = std::min(muonHO_[0]+muonHO_[1],hoclusterref->energy());
-	    (*pfCandidates_)[tmpi].setHcalEnergy(totalHcal-totalHO,muonHcal);
+	    (*pfCandidates_)[tmpi].setHcalEnergy(max(totalHcal-totalHO,0.0),muonHcal);
 	    (*pfCandidates_)[tmpi].setHoEnergy(hoclusterref->energy(),muonHO);
 	  }
 	  // Remove it from the block
@@ -2395,19 +2360,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 
 	if (isPrimaryOrSecondary && dptRel < dptRel_DispVtx_) continue;
 
-	switch (trackref->algo()) {
-	case TrackBase::ctf:
-	case TrackBase::initialStep:
-	case TrackBase::lowPtTripletStep:
-	case TrackBase::pixelPairStep:
-	case TrackBase::detachedTripletStep:
-	case TrackBase::mixedTripletStep:
-	case TrackBase::jetCoreRegionalStep:
-	case TrackBase::muonSeededStepInOut:
-	case TrackBase::muonSeededStepOutIn:
-	  break;
-	case TrackBase::pixelLessStep:
-	case TrackBase::tobTecStep:
+	if (PFTrackAlgoTools::step5(trackref->algo())) {
 	  active[iTrack] = false;	
 	  totalChargedMomentum -= trackref->p();
 	  
@@ -2415,20 +2368,12 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	    std::cout << "\tElement  " << elements[iTrack] 
 		      << " rejected (Dpt = " << -it->first 
 		      << " GeV/c, algo = " << trackref->algo() << ")" << std::endl;
-	  break;
-	case reco::TrackBase::hltIter0:
-	case reco::TrackBase::hltIter1:
-	case reco::TrackBase::hltIter2:
-	case reco::TrackBase::hltIter3:
-	case reco::TrackBase::hltIter4:
-	case reco::TrackBase::hltIterX:
-	  break;	  
-	default:
-	  break;
+
 	}
       }
-    }
 
+    }
+  
     // New determination of the calo and track resolution avec track deletion/rescaling.
     Caloresolution = neutralHadronEnergyResolution( totalChargedMomentum, hclusterref->positionREP().Eta());    
     Caloresolution *= totalChargedMomentum;
@@ -2742,7 +2687,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	  (*pfCandidates_)[tmpi].setHcalEnergy( rawhcalEnergy[iPivot],hcalEnergy[iPivot] );
 	  (*pfCandidates_)[tmpi].setHoEnergy(0., 0.);
 	} else { 
-	  (*pfCandidates_)[tmpi].setHcalEnergy( rawhcalEnergy[iPivot]-totalHO,hcalEnergy[iPivot]*(1.-totalHO/rawhcalEnergy[iPivot]));
+	  (*pfCandidates_)[tmpi].setHcalEnergy( max(rawhcalEnergy[iPivot]-totalHO,0.0),hcalEnergy[iPivot]*(1.-totalHO/rawhcalEnergy[iPivot]));
 	  (*pfCandidates_)[tmpi].setHoEnergy(totalHO, totalHO * hcalEnergy[iPivot]/rawhcalEnergy[iPivot]);
 	} 
 	(*pfCandidates_)[tmpi].setPs1Energy( 0. );
@@ -2814,7 +2759,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
 	chargedHadron.setHcalEnergy(  fraction * totalHcal, fraction * totalHcalEnergyCalibrated );          
 	chargedHadron.setHoEnergy(  0., 0. ); 
       } else { 
-	chargedHadron.setHcalEnergy(  fraction * (totalHcal-totalHO), fraction * totalHcalEnergyCalibrated * (1.-totalHO/totalHcal) );          
+	chargedHadron.setHcalEnergy(  fraction * max(totalHcal-totalHO,0.0), fraction * totalHcalEnergyCalibrated * (1.-totalHO/totalHcal) );          
 	chargedHadron.setHoEnergy( fraction * totalHO, fraction * totalHO * totalHcalEnergyCalibrated / totalHcal ); 
       }
       //JB: fixing up (previously omitted) setting of ECAL energy gouzevit
@@ -3098,7 +3043,7 @@ void PFAlgo::processBlock( const reco::PFBlockRef& blockref,
       (*pfCandidates_)[tmpi].setHcalEnergy( totalHcal, calibHcal );
       (*pfCandidates_)[tmpi].setHoEnergy(0.,0.);
     } else { 
-      (*pfCandidates_)[tmpi].setHcalEnergy( totalHcal-totalHO, calibHcal*(1.-totalHO/totalHcal));
+      (*pfCandidates_)[tmpi].setHcalEnergy( max(totalHcal-totalHO,0.0), calibHcal*(1.-totalHO/totalHcal));
       (*pfCandidates_)[tmpi].setHoEnergy(totalHO,totalHO*calibHcal/totalHcal);
     }
     (*pfCandidates_)[tmpi].setPs1Energy( 0. );
@@ -3229,6 +3174,7 @@ unsigned PFAlgo::reconstructTrack( const reco::PFBlockElement& elt, bool allowLo
     pfCandidates_->back().setFlag( reco::PFCandidate::T_TO_DISP, true);
     pfCandidates_->back().setDisplacedVertexRef( eltTrack->displacedVertexRef(reco::PFBlockElement::T_TO_DISP)->displacedVertexRef(), reco::PFCandidate::T_TO_DISP);
   }
+
   // returns index to the newly created PFCandidate
   return pfCandidates_->size()-1;
 }

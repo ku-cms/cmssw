@@ -22,6 +22,9 @@
 #include "CondFormats/DataRecord/interface/HcalInterpolatedPulseCollRcd.h"
 #include "CondFormats/HcalObjects/interface/HcalInterpolatedPulseColl.h"
 
+#include "CondFormats/DataRecord/interface/HBHENegativeEFilterRcd.h"
+#include "CondFormats/HcalObjects/interface/HBHENegativeEFilter.h"
+
 //
 #include "CondCore/CondDB/interface/Serialization.h"
 
@@ -43,6 +46,7 @@ REGISTER_PLUGIN(HcalGainWidthsRcd,HcalGainWidths);
 REGISTER_PLUGIN(HcalElectronicsMapRcd,HcalElectronicsMap);
 REGISTER_PLUGIN(HcalChannelQualityRcd,HcalChannelQuality);
 REGISTER_PLUGIN(HcalQIEDataRcd,HcalQIEData);
+REGISTER_PLUGIN(HcalQIETypesRcd,HcalQIETypes);
 REGISTER_PLUGIN(HcalCalibrationQIEDataRcd,HcalCalibrationQIEData);
 REGISTER_PLUGIN(HcalZSThresholdsRcd,HcalZSThresholds);
 REGISTER_PLUGIN(HcalRespCorrsRcd,HcalRespCorrs);
@@ -66,3 +70,4 @@ REGISTER_PLUGIN(HcalOOTPileupCorrectionRcd,OOTPileupCorrectionColl);
 REGISTER_PLUGIN(HcalOOTPileupCompatibilityRcd,OOTPileupCorrectionBuffer);
 REGISTER_PLUGIN(HcalOOTPileupCorrectionMapCollRcd,OOTPileupCorrectionMapColl);
 REGISTER_PLUGIN(HcalInterpolatedPulseCollRcd,HcalInterpolatedPulseColl);
+REGISTER_PLUGIN(HBHENegativeEFilterRcd,HBHENegativeEFilter);

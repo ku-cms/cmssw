@@ -1,4 +1,5 @@
 import ROOT
+import math
 
 
 
@@ -19,8 +20,7 @@ class QGLikelihoodCalculator:
   def __init__(self, filename) :
     self.pdfs = {}
     self.etaBins = []
-    self.ptBinsC = []
-    self.ptBinsF = []
+    self.ptBins  = []
     self.rhoBins = []
     self.varNames = { 0:'mult', 1:'ptD', 2:'axis2' }
     self.qgNames = { 0:'quark', 1:'gluon' }
@@ -34,11 +34,27 @@ class QGLikelihoodCalculator:
     if f.IsZombie() : return False
     try :
       self.etaBins = f.Get("etaBins")
-      self.ptBinsC = f.Get("ptBinsC")
-      self.ptBinsF = f.Get("ptBinsF")
+      self.ptBins  = f.Get("ptBins")
       self.rhoBins = f.Get("rhoBins")
     except :
       return False
+
+
+
+    self.pdfs = {}
+    
+    for it in range(0,len(self.qgNames)):
+      self.pdfs[self.qgNames[it]] = {}
+      for iv in range(0,len(self.varNames)):
+        self.pdfs[self.qgNames[it]][self.varNames[iv]] = {}
+        for ie in range(0,len(self.etaBins)):
+          self.pdfs[self.qgNames[it]][self.varNames[iv]][ie] = {}
+          for ip in range(0,len(self.ptBins)):
+            self.pdfs[self.qgNames[it]][self.varNames[iv]][ie][ip] = {}
+            for ir in range(0,len(self.rhoBins)):
+              self.pdfs[self.qgNames[it]][self.varNames[iv]][ie][ip][ir] = 0
+
+
 
     print "[QGLikelihoodCalculator]: Initialized binning of pdfs..."
 
@@ -47,11 +63,21 @@ class QGLikelihoodCalculator:
       if key.IsFolder() == False: continue
       hists = key.ReadObj().GetListOfKeys()
       for hist in hists :
+        pieces = hist.GetName().split("_")
+        varName = pieces[0]
+        qgType  = pieces[1]
+        etaStr  = pieces[2]
+        ptStr   = pieces[3]
+        rhoStr  = pieces[4]
+        etaBin  = int(etaStr.split("eta")[1])
+        ptBin   = int( ptStr.split("pt") [1])
+        rhoBin  = int(rhoStr.split("rho")[1])
         histogram = hist.ReadObj()
         histogram.SetDirectory(0)
-        self.pdfs[hist.GetName()] = histogram
+        self.pdfs[qgType][varName][etaBin][ptBin][rhoBin] = histogram
 
     print "[QGLikelihoodCalculator]: pdfs initialized..."
+
 
     return True
 
@@ -60,8 +86,8 @@ class QGLikelihoodCalculator:
 
   def isValidRange( self, pt, rho, eta ) :
 
-    if pt < self.ptBinsC[0]: return False
-    if pt > self.ptBinsC[len(self.ptBinsC)-1]: return False
+    if pt < self.ptBins[0]: return False
+    if pt > self.ptBins[len(self.ptBins)-1]: return False
     if rho < self.rhoBins[0]: return False
     if rho > self.rhoBins[len(self.rhoBins)-1]: return False
     if math.fabs(eta) < self.etaBins[0]: return False
@@ -71,22 +97,17 @@ class QGLikelihoodCalculator:
 
 
 
-  def findEntry( self, eta, pt, rho, qgIndex, varIndex ) :
+  def findEntry( self, eta, pt, rho, qgType, varName ) :
 
     etaBin = getBinNumber( self.etaBins, math.fabs(eta))
     if etaBin==-1: return None
-    elif etaBin==0 :
-      ptBin = getBinNumber( self.ptBinsC, pt )
-    else :
-      ptBin = getBinNumber( self.ptBinsF, pt )
+    ptBin = getBinNumber( self.ptBins, pt )
     if ptBin==-1 : return None
 
     rhoBin = getBinNumber( self.rhoBins, rho )
     if rhoBin==-1 : return None
 
-    histName = self.varNames[varIndex] + "_" + self.qgNames[qgIndex] + "_eta-" + str(etaBin) + "_pt-" + str(ptBin) + "_rho-" + str(rhoBin)
-
-    return self.pdfs[histName]
+    return self.pdfs[qgType][varName][etaBin][ptBin][rhoBin]
 
 
 
@@ -96,6 +117,7 @@ class QGLikelihoodCalculator:
 
     if self.isValidRange(jet.pt(), rho, jet.eta())==False:  return -1
 
+    # careful!!! this needs to be in the same order of self.varNames
     vars = {0:jet.mult, 1:jet.ptd, 2:jet.axis2}
 
     Q=1.
@@ -112,16 +134,16 @@ class QGLikelihoodCalculator:
     for i in vars :
 
       #print self.varNames[i] + ": " + str(vars[i])
-      # quarks = 0
-      qgEntry = self.findEntry(jet.eta(), jet.pt(), rho, 0, i)
+      # quarks 
+      qgEntry = self.findEntry(jet.eta(), jet.pt(), rho, "quark", self.varNames[i])
 
       if qgEntry == None:  return -1
       Qi = qgEntry.GetBinContent(qgEntry.FindBin(vars[i]))
       mQ = qgEntry.GetMean()
       #print "Qi: " + str(Qi)
 
-      # gluons = 1
-      qgEntry = self.findEntry(jet.eta(), jet.pt(), rho, 1, i)
+      # gluons 
+      qgEntry = self.findEntry(jet.eta(), jet.pt(), rho, "gluon", self.varNames[i])
 
       if qgEntry == None: return -1
       Gi = qgEntry.GetBinContent(qgEntry.FindBin(vars[i]))

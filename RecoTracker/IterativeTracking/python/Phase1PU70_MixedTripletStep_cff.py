@@ -36,7 +36,7 @@ mixedTripletStepSeedLayersA = cms.EDProducer("SeedingLayersEDProducer",
     TEC = cms.PSet(
         matchedRecHits = cms.InputTag("siStripMatchedRecHits","matchedRecHit"),
         useRingSlector = cms.bool(True),
-        TTRHBuilder = cms.string('WithTrackAngle'), minGoodCharge = cms.double(2069),
+        TTRHBuilder = cms.string('WithTrackAngle'), clusterChargeCut = cms.PSet(refToPSet_ = cms.string('SiStripClusterChargeCutNone')),
         minRing = cms.int32(1),
         maxRing = cms.int32(2),
         skipClusters = cms.InputTag('mixedTripletStepClusters')
@@ -66,6 +66,8 @@ mixedTripletStepSeedsA.SeedComparitorPSet = cms.PSet(
     )
 mixedTripletStepSeedsA.ClusterCheckPSet.doClusterCheck = cms.bool(False)
 mixedTripletStepSeedsA.OrderedHitsFactoryPSet.GeneratorPSet.maxElement = cms.uint32(0)
+mixedTripletStepSeedsA.SeedCreatorPSet.magneticField = ''
+mixedTripletStepSeedsA.SeedCreatorPSet.propagator = 'PropagatorWithMaterial'
 
 # SEEDING LAYERS
 mixedTripletStepSeedLayersB = cms.EDProducer("SeedingLayersEDProducer",
@@ -100,6 +102,8 @@ mixedTripletStepSeedsB.SeedComparitorPSet = cms.PSet(
     )
 mixedTripletStepSeedsB.ClusterCheckPSet.doClusterCheck = cms.bool(False)
 mixedTripletStepSeedsB.OrderedHitsFactoryPSet.GeneratorPSet.maxElement = cms.uint32(0)
+mixedTripletStepSeedsB.SeedCreatorPSet.magneticField = ''
+mixedTripletStepSeedsB.SeedCreatorPSet.propagator = 'PropagatorWithMaterial'
 
 import RecoTracker.TkSeedGenerator.GlobalCombinedSeeds_cfi
 mixedTripletStepSeeds = RecoTracker.TkSeedGenerator.GlobalCombinedSeeds_cfi.globalCombinedSeeds.clone()
@@ -128,8 +132,8 @@ mixedTripletStepPropagatorOpposite = TrackingTools.MaterialEffects.OppositeMater
     ptMin = 0.1
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-mixedTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+mixedTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
     ComponentName = cms.string('mixedTripletStepChi2Est'),
     nSigma = cms.double(3.0),
     MaxChi2 = cms.double(16.0)
@@ -175,7 +179,7 @@ mixedTripletStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProduc
     AlgorithmName = cms.string('mixedTripletStep'),
     src = 'mixedTripletStepTrackCandidates',
     Fitter = cms.string('FlexibleKFFittingSmoother'),
-    TTRHBuilder=cms.string('WithTrackAngle'), minGoodCharge = cms.double(2069)
+    TTRHBuilder=cms.string('WithTrackAngle')
 )
 
 # TRACK SELECTION AND QUALITY FLAG SETTING.

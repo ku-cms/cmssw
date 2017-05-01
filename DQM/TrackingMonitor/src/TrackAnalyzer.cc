@@ -9,7 +9,9 @@
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
+#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/InputTag.h"
@@ -38,11 +40,16 @@ TrackAnalyzer::TrackAnalyzer(const edm::ParameterSet& iConfig)
     , doLumiAnalysis_                  ( conf_.getParameter<bool>("doLumiAnalysis") )
     , doTestPlots_                     ( conf_.getParameter<bool>("doTestPlots") )
     , doHIPlots_                       ( conf_.getParameter<bool>("doHIPlots")  )
+    , doSIPPlots_                      ( conf_.getParameter<bool>("doSIPPlots") )
+    , doEffFromHitPatternVsPU_         ( conf_.getParameter<bool>("doEffFromHitPatternVsPU") )
+    , doEffFromHitPatternVsBX_         ( conf_.getParameter<bool>("doEffFromHitPatternVsBX") )
+    , pvNDOF_                          ( conf_.getParameter<int> ("pvNDOF") )
     , qualityString_                   ( conf_.getParameter<std::string>("qualityString"))
+    , good_vertices_(0)
+    , bx_(0)
 {
   initHistos();
   TopFolder_ = conf_.getParameter<std::string>("FolderName"); 
-
 }
 
 TrackAnalyzer::TrackAnalyzer(const edm::ParameterSet& iConfig, edm::ConsumesCollector& iC) 
@@ -56,68 +63,78 @@ TrackAnalyzer::TrackAnalyzer(const edm::ParameterSet& iConfig, edm::ConsumesColl
 
 void TrackAnalyzer::initHistos()
 {
-  Chi2 = NULL;
-  Chi2Prob = NULL;
-  Chi2ProbVsPhi = NULL;
-  Chi2ProbVsEta = NULL;
-  Chi2oNDF = NULL;
-  Chi2oNDFVsEta = NULL;
-  Chi2oNDFVsPhi = NULL;
-  Chi2oNDFVsTheta = NULL;
-  Chi2oNDFVsTheta = NULL;
-  Chi2oNDFVsPhi = NULL;
-  Chi2oNDFVsEta = NULL;
+  Chi2 = nullptr;
+  Chi2Prob = nullptr;
+  Chi2ProbVsPhi = nullptr;
+  Chi2ProbVsEta = nullptr;
+  Chi2oNDF = nullptr;
+  Chi2oNDFVsEta = nullptr;
+  Chi2oNDFVsPhi = nullptr;
+  Chi2oNDFVsTheta = nullptr;
+  Chi2oNDFVsTheta = nullptr;
+  Chi2oNDFVsPhi = nullptr;
+  Chi2oNDFVsEta = nullptr;
   	    
-  NumberOfRecHitsPerTrack = NULL;
-  NumberOfValidRecHitsPerTrack = NULL;
-  NumberOfLostRecHitsPerTrack = NULL;
+  NumberOfRecHitsPerTrack = nullptr;
+  NumberOfValidRecHitsPerTrack = nullptr;
+  NumberOfLostRecHitsPerTrack = nullptr;
 
-  NumberOfRecHitsPerTrackVsPhi = NULL;
-  NumberOfRecHitsPerTrackVsTheta = NULL;
-  NumberOfRecHitsPerTrackVsEta = NULL;
+  NumberOfRecHitsPerTrackVsPhi = nullptr;
+  NumberOfRecHitsPerTrackVsTheta = nullptr;
+  NumberOfRecHitsPerTrackVsEta = nullptr;
 
-  NumberOfRecHitVsPhiVsEtaPerTrack = NULL;
+  NumberOfRecHitVsPhiVsEtaPerTrack = nullptr;
 
-  NumberOfValidRecHitsPerTrackVsPhi = NULL;
-  NumberOfValidRecHitsPerTrackVsEta = NULL;
+  NumberOfValidRecHitsPerTrackVsPhi = nullptr;
+  NumberOfValidRecHitsPerTrackVsEta = nullptr;
 
-  NumberOfLayersPerTrack = NULL;
-  NumberOfLayersVsPhiVsEtaPerTrack = NULL;
 
-  DistanceOfClosestApproach = NULL;
-  DistanceOfClosestApproachToBS = NULL;
-  DistanceOfClosestApproachVsTheta = NULL;
-  DistanceOfClosestApproachVsPhi = NULL;
-  DistanceOfClosestApproachToBSVsPhi = NULL;
-  DistanceOfClosestApproachVsEta = NULL;
-  xPointOfClosestApproach = NULL;
-  xPointOfClosestApproachVsZ0wrt000 = NULL;
-  xPointOfClosestApproachVsZ0wrtBS = NULL;
-  yPointOfClosestApproach = NULL;
-  yPointOfClosestApproachVsZ0wrt000 = NULL;
-  yPointOfClosestApproachVsZ0wrtBS = NULL;
-  zPointOfClosestApproach = NULL;
-  zPointOfClosestApproachVsPhi = NULL;
-  algorithm = NULL;
+  DistanceOfClosestApproach = nullptr;
+  DistanceOfClosestApproachToBS = nullptr;
+  AbsDistanceOfClosestApproachToBS = nullptr;
+  DistanceOfClosestApproachVsTheta = nullptr;
+  DistanceOfClosestApproachVsPhi = nullptr;
+  DistanceOfClosestApproachToBSVsPhi = nullptr;
+  DistanceOfClosestApproachVsEta = nullptr;
+  xPointOfClosestApproach = nullptr;
+  xPointOfClosestApproachVsZ0wrt000 = nullptr;
+  xPointOfClosestApproachVsZ0wrtBS = nullptr;
+  yPointOfClosestApproach = nullptr;
+  yPointOfClosestApproachVsZ0wrt000 = nullptr;
+  yPointOfClosestApproachVsZ0wrtBS = nullptr;
+  zPointOfClosestApproach = nullptr;
+  zPointOfClosestApproachVsPhi = nullptr;
+  algorithm = nullptr;
+  oriAlgo = nullptr;
+  stoppingSource = nullptr;
+  stoppingSourceVSeta = nullptr;
+  stoppingSourceVSphi = nullptr;
     // TESTING
-  TESTDistanceOfClosestApproachToBS = NULL;
-  TESTDistanceOfClosestApproachToBSVsPhi = NULL;
+  TESTDistanceOfClosestApproachToBS = nullptr;
+  TESTDistanceOfClosestApproachToBSVsPhi = nullptr;
 
 // by Mia in order to deal w/ LS transitions
-  Chi2oNDF_lumiFlag = NULL;
-  NumberOfRecHitsPerTrack_lumiFlag = NULL;
+  Chi2oNDF_lumiFlag = nullptr;
+  NumberOfRecHitsPerTrack_lumiFlag = nullptr;
 
   ////////////////////////////////////////////////////////////                                                                                                                                             
   //special Plots for HI DQM  //SHOULD I ADD THE BOOL HERE??                                                                                                                                               
   ////////////////////////////////////////////////////////////                                                                                                                                             
-  LongDCASig = NULL;
-  TransDCASig = NULL;
-  dNdPhi_HighPurity = NULL;
-  dNdEta_HighPurity = NULL;
-  dNdPt_HighPurity = NULL;
-  NhitVsEta_HighPurity = NULL;
-  NhitVsPhi_HighPurity = NULL;
+  LongDCASig = nullptr;
+  TransDCASig = nullptr;
+  dNdPhi_HighPurity = nullptr;
+  dNdEta_HighPurity = nullptr;
+  dNdPt_HighPurity = nullptr;
+  NhitVsEta_HighPurity = nullptr;
+  NhitVsPhi_HighPurity = nullptr;
 
+  // IP significance
+  sipDxyToBS = nullptr;
+  sipDzToBS = nullptr;
+  sip3dToPV = nullptr;
+  sip2dToPV = nullptr;
+  sipDxyToPV = nullptr;
+  sipDzToPV = nullptr;
 
 }
 
@@ -125,13 +142,15 @@ TrackAnalyzer::~TrackAnalyzer()
 { 
 }
 
-void TrackAnalyzer::initHisto(DQMStore::IBooker & ibooker)
+void TrackAnalyzer::initHisto(DQMStore::IBooker & ibooker, const edm::EventSetup & iSetup)
 {
 
   bookHistosForHitProperties(ibooker);
   bookHistosForBeamSpot(ibooker);
   bookHistosForLScertification( ibooker);
-  
+  if (doEffFromHitPatternVsPU_ || doAllPlots_) bookHistosForEfficiencyFromHitPatter(ibooker, iSetup, "");
+  if (doEffFromHitPatternVsBX_ || doAllPlots_) bookHistosForEfficiencyFromHitPatter(ibooker, iSetup, "VsBX");
+
   // book tracker specific related histograms
   // ---------------------------------------------------------------------------------//
   if(doTrackerSpecific_ || doAllPlots_) bookHistosForTrackerSpecific(ibooker);
@@ -161,6 +180,86 @@ void TrackAnalyzer::initHisto(DQMStore::IBooker & ibooker)
   }
 }
 
+void TrackAnalyzer::bookHistosForEfficiencyFromHitPatter(DQMStore::IBooker &ibooker,
+                                                         const edm::EventSetup & iSetup,
+							 const std::string suffix)
+{
+  if (doEffFromHitPatternVsPU_ || doEffFromHitPatternVsBX_ || doAllPlots_) {
+
+    ibooker.setCurrentFolder(TopFolder_ + "/HitEffFromHitPattern" + suffix);
+    
+    int NBINS[] = { 50, 3564 };
+    float MAX[] = { 50.5, 3564.5 };
+    
+    int mon = -1;
+    int nbins = -1;
+    float max = -1.;
+    for (int i=0; i<monQuantity::END; i++) {
+      if (monName[i] == suffix) {
+	mon = i;
+	nbins = NBINS[i];
+	max = MAX[i];
+      }
+    }
+  
+    edm::ESHandle<TrackerGeometry> trackerGeometry;
+    iSetup.get<TrackerDigiGeometryRecord>().get(trackerGeometry);
+
+    // Values are not ordered randomly, but the order is taken from
+    // http://cmslxr.fnal.gov/dxr/CMSSW/source/Geometry/CommonDetUnit/interface/GeomDetEnumerators.h#15
+    const char * dets[] = { "None", "PXB", "PXF", "TIB", "TID", "TOB", "TEC"};
+
+    // Also in this case, ordering is not random but extracted from
+    // http://cmslxr.fnal.gov/dxr/CMSSW/source/DataFormats/TrackReco/interface/HitPattern.h
+    // The category "total" is an addition to ease the computation of
+    // the efficiencies and is not part of the original HitPattern.
+    const char * hit_category[] = { "valid", "missing", "inactive", "bad", "total"};
+
+    // We set sub_det to be a 1-based index since to it is the sub-sub-structure in the HitPattern
+    char title[50];
+    for (unsigned int det = 1; det < sizeof(dets)/sizeof(char*); ++det ) {
+      for (unsigned int sub_det = 1;
+           sub_det <= trackerGeometry->numberOfLayers(det); ++sub_det) {
+        for (unsigned int cat = 0;
+             cat < sizeof(hit_category)/sizeof(char *); ++cat) {
+          memset(title, 0, sizeof(title));
+          snprintf(title, sizeof(title), "Hits%s_%s_%s_Subdet%d", suffix.c_str(), hit_category[cat], dets[det], sub_det);
+          switch(cat) {
+            case 0:
+              hits_valid_.insert(std::make_pair(
+		  Key(det, sub_det, mon),
+		  ibooker.book1D(title, title, nbins, 0.5, max)));
+              break;
+            case 1:
+              hits_missing_.insert(std::make_pair(
+		  Key(det, sub_det, mon),
+                  ibooker.book1D(title, title, nbins, 0.5, max)));
+              break;
+            case 2:
+              hits_inactive_.insert(std::make_pair(
+		  Key(det, sub_det, mon),
+                  ibooker.book1D(title, title, nbins, 0.5, max)));
+              break;
+            case 3:
+              hits_bad_.insert(std::make_pair(
+		  Key(det, sub_det, mon),
+                  ibooker.book1D(title, title, nbins, 0.5, max)));
+              break;
+            case 4:
+              hits_total_.insert(std::make_pair(
+		  Key(det, sub_det, mon),
+                  ibooker.book1D(title, title, nbins, 0.5, max)));
+              break;
+            default:
+              LogDebug("TrackAnalyzer") << "Invalid hit category used " << cat << " ignored\n";
+          }
+        }
+      }
+    }
+  }
+}
+
+#include "DataFormats/TrackReco/interface/TrajectoryStopReasons.h"
 void TrackAnalyzer::bookHistosForHitProperties(DQMStore::IBooker & ibooker) {
   
     // parameters from the configuration
@@ -229,28 +328,73 @@ void TrackAnalyzer::bookHistosForHitProperties(DQMStore::IBooker & ibooker) {
       NumberOfLostRecHitsPerTrack->setAxisTitle("Number of lost RecHits for each Track");
       NumberOfLostRecHitsPerTrack->setAxisTitle("Number of Tracks", 2);
 
-      histname = "NumberOfLayersPerTrack_";
-      NumberOfLayersPerTrack = ibooker.book1D(histname+CategoryName, histname+CategoryName, TKLayBin, TKLayMin, TKLayMax);
-      NumberOfLayersPerTrack->setAxisTitle("Number of Layers of each Track", 1);
-      NumberOfLayersPerTrack->setAxisTitle("Number of Tracks", 2);
-      
+      histname = "NumberOfMissingInnerRecHitsPerTrack_";
+      NumberOfMIRecHitsPerTrack = ibooker.book1D(histname+CategoryName, histname+CategoryName, 10, -0.5, 9.5);
+      NumberOfMIRecHitsPerTrack->setAxisTitle("Number of missing-inner RecHits for each Track");
+      NumberOfMIRecHitsPerTrack->setAxisTitle("Number of Tracks", 2);
+
+      histname = "NumberOfMissingOuterRecHitsPerTrack_";
+      NumberOfMORecHitsPerTrack = ibooker.book1D(histname+CategoryName, histname+CategoryName, 10, -0.5, 9.5);
+      NumberOfMORecHitsPerTrack->setAxisTitle("Number of missing-outer RecHits for each Track");
+      NumberOfMORecHitsPerTrack->setAxisTitle("Number of Tracks", 2);
+
+      histname = "ValidFractionPerTrack_";
+      ValidFractionPerTrack = ibooker.book1D(histname+CategoryName, histname+CategoryName, 101, 0., 1.01);
+      ValidFractionPerTrack->setAxisTitle("ValidFraction of RecHits for each Track");
+      ValidFractionPerTrack->setAxisTitle("Number of Tracks", 2);
+
+
 
       if ( doRecHitVsPhiVsEtaPerTrack_ || doAllPlots_ ){
 	
-	histname = "NumberOfRecHitVsPhiVsEtaPerTrack_";
-	NumberOfRecHitVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName, 
+	histname = "NumberOfValidRecHitVsPhiVsEtaPerTrack_";
+	NumberOfValidRecHitVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName, 
 								    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 40., "");
-	NumberOfRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
-	NumberOfRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+	NumberOfValidRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
+	NumberOfValidRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+
+        histname = "NumberOfLostRecHitVsPhiVsEtaPerTrack_";
+        NumberOfLostRecHitVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName,
+                                                                    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 5., "");
+        NumberOfLostRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
+        NumberOfLostRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+
+
+        histname = "NumberMIRecHitVsPhiVsEtaPerTrack_";
+        NumberOfMIRecHitVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName,
+                                                                    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 15., "");
+        NumberOfMIRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
+        NumberOfMIRecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+
+        histname = "NumberMORecHitVsPhiVsEtaPerTrack_";
+        NumberOfMORecHitVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName,
+                                                                    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 15., "");
+        NumberOfMORecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
+        NumberOfMORecHitVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+
+        histname = "ValidFractionVsPhiVsEtaPerTrack_";
+        ValidFractionVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName,
+                                                                    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 2., "");
+        ValidFractionVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
+        ValidFractionVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+
+
       }
 
-      if ( doLayersVsPhiVsEtaPerTrack_ || doAllPlots_ ){
-	
-	histname = "NumberOfLayersVsPhiVsEtaPerTrack_";
-	NumberOfLayersVsPhiVsEtaPerTrack = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName, 
+      std::string layerTypeName[4] = {"","Off","3D","Missing"};
+      for (int i=0; i<4; ++i) {
+        histname = "NumberOf"+ layerTypeName[i] + "LayersPerTrack_";
+        NumberOfLayersPerTrack[i] = ibooker.book1D(histname+CategoryName, histname+CategoryName, TKLayBin, TKLayMin, TKLayMax);
+        NumberOfLayersPerTrack[i]->setAxisTitle("Number of " + layerTypeName[i] + " Layers of each Track", 1);
+        NumberOfLayersPerTrack[i]->setAxisTitle("Number of Tracks", 2);
+      }
+      if ( doLayersVsPhiVsEtaPerTrack_ || doAllPlots_ )
+	for (int i=0; i<4; ++i) {
+          histname = "NumberOf"+ layerTypeName[i] + "LayersVsPhiVsEtaPerTrack_";
+	  NumberOfLayersVsPhiVsEtaPerTrack[i] = ibooker.bookProfile2D(histname+CategoryName, histname+CategoryName, 
 								    EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax, 0, 40., "");
-	NumberOfLayersVsPhiVsEtaPerTrack->setAxisTitle("Track #eta ", 1);
-	NumberOfLayersVsPhiVsEtaPerTrack->setAxisTitle("Track #phi ", 2);
+	  NumberOfLayersVsPhiVsEtaPerTrack[i]->setAxisTitle("Track #eta ", 1);
+	  NumberOfLayersVsPhiVsEtaPerTrack[i]->setAxisTitle("Track #phi ", 2);
       }
     }
 
@@ -335,11 +479,22 @@ void TrackAnalyzer::bookHistosForHitProperties(DQMStore::IBooker & ibooker) {
           NhitVsPhi_HighPurity = ibooker.bookProfile(histname+CategoryName,histname+CategoryName,PhiBin,PhiMin,PhiMax,-0.5,39.5,"");
           NhitVsPhi_HighPurity->setAxisTitle("Track #phi",1);
           NhitVsPhi_HighPurity->setAxisTitle("Number of Valid RecHits in each Track",2);
+
+	  histname = "Ptdist_HighPurity_";
+          Ptdist_HighPurity = ibooker.book1D(histname+CategoryName,histname+CategoryName,150,0,50.);
+          Ptdist_HighPurity->setAxisTitle("p_{T} (GeV/c)",1);
+          Ptdist_HighPurity->setAxisTitle("Number of Tracks",2);
+
+          histname = "dNhitdPt_HighPurity_";
+          dNhitdPt_HighPurity = ibooker.bookProfile(histname+CategoryName,histname+CategoryName,150,0,25.,-0.5,39.5,"");
+          dNhitdPt_HighPurity->setAxisTitle("p_{T} (GeV/c)",1);
+          dNhitdPt_HighPurity->setAxisTitle("N_{hit}",2);
+	  
         }
 
 
       
-      if (doDCAPlots_) {
+      if(doDCAPlots_ || doPVPlots_ || doSIPPlots_ || doAllPlots_)  {
 	histname = "xPointOfClosestApproach_";
 	xPointOfClosestApproach = ibooker.book1D(histname+CategoryName, histname+CategoryName, VXBin, VXMin, VXMax);
 	xPointOfClosestApproach->setAxisTitle("x component of Track PCA to beam line (cm)",1);
@@ -356,7 +511,7 @@ void TrackAnalyzer::bookHistosForHitProperties(DQMStore::IBooker & ibooker) {
 	zPointOfClosestApproach->setAxisTitle("Number of Tracks",2);
 	
 	histname = "xPointOfClosestApproachToPV_";
-	xPointOfClosestApproachToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, VXBin, VXMin, VXMax);
+        xPointOfClosestApproachToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, VXBin, VXMin, VXMax);
 	xPointOfClosestApproachToPV->setAxisTitle("x component of Track PCA to pv (cm)",1);
 	xPointOfClosestApproachToPV->setAxisTitle("Number of Tracks",2);
 	
@@ -377,8 +532,41 @@ void TrackAnalyzer::bookHistosForHitProperties(DQMStore::IBooker & ibooker) {
       algorithm = ibooker.book1D(histname+CategoryName, histname+CategoryName, reco::TrackBase::algoSize, 0., double(reco::TrackBase::algoSize));
       algorithm->setAxisTitle("Tracking algorithm",1);
       algorithm->setAxisTitle("Number of Tracks",2);
-      for (size_t ibin=0; ibin<reco::TrackBase::algoSize-1; ibin++)
+
+      histname = "originalAlgorithm_";
+      oriAlgo = ibooker.book1D(histname+CategoryName, histname+CategoryName, reco::TrackBase::algoSize, 0., double(reco::TrackBase::algoSize));
+      oriAlgo->setAxisTitle("Tracking algorithm",1);
+      oriAlgo->setAxisTitle("Number of Tracks",2);
+
+      for (size_t ibin=0; ibin<reco::TrackBase::algoSize-1; ibin++) {
 	algorithm->setBinLabel(ibin+1,reco::TrackBase::algoNames[ibin]);
+        oriAlgo->setBinLabel(ibin+1,reco::TrackBase::algoNames[ibin]);
+      }
+
+      // DataFormats/TrackReco/interface/TrajectoryStopReasons.h
+      std::vector<std::string> StopReasonName = { "UNINITIALIZED", "MAX_HITS", "MAX_LOST_HITS", "MAX_CONSECUTIVE_LOST_HITS", "LOST_HIT_FRACTION", "MIN_PT", "CHARGE_SIGNIFICANCE", "LOOPER", "MAX_CCC_LOST_HITS", "NO_SEGMENTS_FOR_VALID_LAYERS", "NOT_STOPPED" };
+
+      histname = "stoppingSource_";
+      stoppingSource = ibooker.book1D(histname+CategoryName, histname+CategoryName, StopReasonName.size(), 0., double(StopReasonName.size()));
+      stoppingSource->setAxisTitle("stopping reason",1);
+      stoppingSource->setAxisTitle("Number of Tracks",2);
+      
+      histname = "stoppingSourceVSeta_";
+      stoppingSourceVSeta = ibooker.book2D(histname+CategoryName, histname+CategoryName, EtaBin, EtaMin, EtaMax, StopReasonName.size(), 0., double(StopReasonName.size()));
+      stoppingSourceVSeta->setAxisTitle("track #eta",1);
+      stoppingSourceVSeta->setAxisTitle("stopping reason",2);
+      
+      histname = "stoppingSourceVSphi_";
+      stoppingSourceVSphi = ibooker.book2D(histname+CategoryName, histname+CategoryName, PhiBin, PhiMin, PhiMax, StopReasonName.size(), 0., double(StopReasonName.size()));
+      stoppingSourceVSphi->setAxisTitle("track #phi",1);
+      stoppingSourceVSphi->setAxisTitle("stopping reason",2);
+
+      for (size_t ibin=0; ibin<StopReasonName.size(); ibin++) {
+	stoppingSource->setBinLabel(ibin+1,StopReasonName[ibin],1);
+	stoppingSourceVSeta->setBinLabel(ibin+1,StopReasonName[ibin],2);
+	stoppingSourceVSphi->setBinLabel(ibin+1,StopReasonName[ibin],2);
+      }
+
     }
 
 }
@@ -440,6 +628,10 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
       double DxyMin       = conf_.getParameter<double>("DxyMin");
       double DxyMax       = conf_.getParameter<double>("DxyMax");
       
+      int    AbsDxyBin    = conf_.getParameter<int>(   "AbsDxyBin");
+      double AbsDxyMin    = conf_.getParameter<double>("AbsDxyMin");
+      double AbsDxyMax    = conf_.getParameter<double>("AbsDxyMax");
+      
       int    PhiBin     = conf_.getParameter<int>(   "PhiBin");
       double PhiMin     = conf_.getParameter<double>("PhiMin");
       double PhiMax     = conf_.getParameter<double>("PhiMax");
@@ -468,9 +660,14 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
       DistanceOfClosestApproachToBS->setAxisTitle("Track d_{xy} wrt beam spot (cm)",1);
       DistanceOfClosestApproachToBS->setAxisTitle("Number of Tracks",2);
       
+      histname = "AbsDistanceOfClosestApproachToBS_";
+      AbsDistanceOfClosestApproachToBS = ibooker.book1D(histname+CategoryName,histname+CategoryName,AbsDxyBin,AbsDxyMin,AbsDxyMax);
+      AbsDistanceOfClosestApproachToBS->setAxisTitle("Track |d_{xy}| wrt beam spot (cm)",1);
+      AbsDistanceOfClosestApproachToBS->setAxisTitle("Number of Tracks",2);
+      
       histname = "DistanceOfClosestApproachToBSVsPhi_";
       DistanceOfClosestApproachToBSVsPhi = ibooker.bookProfile(histname+CategoryName,histname+CategoryName, PhiBin, PhiMin, PhiMax, DxyBin, DxyMin, DxyMax,"");
-      DistanceOfClosestApproachToBSVsPhi->getTH1()->SetBit(TH1::kCanRebin);
+      DistanceOfClosestApproachToBSVsPhi->getTH1()->SetCanExtend(TH1::kAllAxes);
       DistanceOfClosestApproachToBSVsPhi->setAxisTitle("Track #phi",1);
       DistanceOfClosestApproachToBSVsPhi->setAxisTitle("Track d_{xy} wrt beam spot (cm)",2);
       
@@ -497,7 +694,7 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
       histname = "zPointOfClosestApproachVsPhi_";
       zPointOfClosestApproachVsPhi = ibooker.bookProfile(histname+CategoryName, histname+CategoryName, PhiBin, PhiMin, PhiMax, VZBinProf, VZMinProf, VZMaxProf, "");
       zPointOfClosestApproachVsPhi->setAxisTitle("Track #phi",1);
-      zPointOfClosestApproachVsPhi->setAxisTitle("y component of Track PCA to beam line (cm)",2);
+      zPointOfClosestApproachVsPhi->setAxisTitle("z component of Track PCA to beam line (cm)",2);
     }
     
     if(doDCAPlots_ || doPVPlots_ || doAllPlots_) {
@@ -531,7 +728,7 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
       
       histname = "DistanceOfClosestApproachToPVVsPhi_";
       DistanceOfClosestApproachToPVVsPhi = ibooker.bookProfile(histname+CategoryName,histname+CategoryName, PhiBin, PhiMin, PhiMax, DxyBin, DxyMin, DxyMax,"");
-      DistanceOfClosestApproachToPVVsPhi->getTH1()->SetBit(TH1::kCanRebin);
+      DistanceOfClosestApproachToPVVsPhi->getTH1()->SetCanExtend(TH1::kAllAxes);
       DistanceOfClosestApproachToPVVsPhi->setAxisTitle("Track #phi",1);
       DistanceOfClosestApproachToPVVsPhi->setAxisTitle("Track d_{xy} wrt beam spot (cm)",2);
       
@@ -565,7 +762,7 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
 	
 	histname = "TESTDistanceOfClosestApproachToBSVsPhi_";
 	TESTDistanceOfClosestApproachToBSVsPhi = ibooker.bookProfile(histname+CategoryName,histname+CategoryName, PhiBin, PhiMin, PhiMax, DxyBin, DxyMin, DxyMax,"");
-	TESTDistanceOfClosestApproachToBSVsPhi->getTH1()->SetBit(TH1::kCanRebin);
+	TESTDistanceOfClosestApproachToBSVsPhi->getTH1()->SetCanExtend(TH1::kAllAxes);
 	TESTDistanceOfClosestApproachToBSVsPhi->setAxisTitle("Track #phi",1);
 	TESTDistanceOfClosestApproachToBSVsPhi->setAxisTitle("Track d_{xy} wrt beam spot (cm)",2);
 	
@@ -616,24 +813,87 @@ void TrackAnalyzer::bookHistosForBeamSpot(DQMStore::IBooker & ibooker) {
 	
 	histname = "DistanceOfClosestApproachVsPhi_";
 	DistanceOfClosestApproachVsPhi = ibooker.bookProfile(histname+CategoryName,histname+CategoryName, PhiBin, PhiMin, PhiMax, DxyMin,DxyMax,"");
-	DistanceOfClosestApproachVsPhi->getTH1()->SetBit(TH1::kCanRebin);
+	DistanceOfClosestApproachVsPhi->getTH1()->SetCanExtend(TH1::kAllAxes);
 	DistanceOfClosestApproachVsPhi->setAxisTitle("Track #phi",1);
 	DistanceOfClosestApproachVsPhi->setAxisTitle("Track d_{xy} wrt (0,0,0) (cm)",2);
       }
     }
 
+
+    if (doSIPPlots_ || doAllPlots_) {
+      const double sipBins = 200;
+      const double sipMin = -20;
+      const double sipMax = 20;
+
+      ibooker.setCurrentFolder(TopFolder_+"/GeneralProperties");
+
+      // SIP wrt. beamspot
+      histname = "SIPDxyToBS_";
+      sipDxyToBS = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sipDxyToBS->setAxisTitle("Track dxy significance wrt beam spot",1);
+      sipDxyToBS->setAxisTitle("Number of Tracks",2);
+
+      histname = "SIPDzToBS_";
+      sipDzToBS = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sipDzToBS->setAxisTitle("Track dz significance wrt beam spot",1);
+      sipDzToBS->setAxisTitle("Number of Tracks",2);
+
+      // SIP wrt. vertex
+      histname = "SIP3DToPV_";
+      sip3dToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sip3dToPV->setAxisTitle("3D IP significance wrt primary vertex",1);
+      sip3dToPV->setAxisTitle("Number of Tracks",2);
+
+      histname = "SIP2DToPV_";
+      sip2dToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sip2dToPV->setAxisTitle("2D IP significance wrt primary vertex",1);
+      sip2dToPV->setAxisTitle("Number of Tracks",2);
+
+      histname = "SIPDxyToPV_";
+      sipDxyToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sipDxyToPV->setAxisTitle("Track dxy significance wrt primary vertex",1);
+      sipDxyToPV->setAxisTitle("Number of Tracks",2);
+
+      histname = "SIPDzToPV_";
+      sipDzToPV = ibooker.book1D(histname+CategoryName, histname+CategoryName, sipBins, sipMin, sipMax);
+      sipDzToPV->setAxisTitle("Track dz significance wrt primary vertex",1);
+      sipDzToPV->setAxisTitle("Number of Tracks",2);
+    }
 }
 
 // -- Analyse
 // ---------------------------------------------------------------------------------//
+void TrackAnalyzer::setNumberOfGoodVertices(const edm::Event & iEvent) {
+
+  good_vertices_ = 0;
+  
+  edm::Handle<reco::VertexCollection> recoPrimaryVerticesHandle;
+  iEvent.getByToken(pvToken_, recoPrimaryVerticesHandle);
+  if (recoPrimaryVerticesHandle.isValid())
+    if (recoPrimaryVerticesHandle->size() > 0)
+      for (auto v : *recoPrimaryVerticesHandle)
+        if (v.ndof() >= pvNDOF_ && !v.isFake())
+          ++good_vertices_;
+}
+
+void TrackAnalyzer::setBX(const edm::Event & iEvent) {
+  bx_ = iEvent.bunchCrossing();
+}
+
 void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup, const reco::Track& track)
 {
   double phi   = track.phi();
-  double eta   = track.eta();
+  // double eta   = track.eta();
+  auto phiIn =  track.innerPosition().phi();
+  auto etaIn =  track.innerPosition().eta();
+  auto phiOut =  track.outerPosition().phi();
+  auto etaOut =  track.outerPosition().eta();
 
   int nRecHits      = track.hitPattern().numberOfHits(reco::HitPattern::TRACK_HITS);
   int nValidRecHits = track.numberOfValidHits();
   int nLostRecHits  = track.numberOfLostHits();
+  int nLostIn =      track.hitPattern().numberOfLostTrackerHits(reco::HitPattern::MISSING_INNER_HITS);
+  int nLostOut =     track.hitPattern().numberOfLostTrackerHits(reco::HitPattern::MISSING_OUTER_HITS);
 
   double chi2     = track.chi2();
   double chi2prob = TMath::Prob(track.chi2(),(int)track.ndof());
@@ -644,20 +904,39 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     NumberOfRecHitsPerTrack     -> Fill(nRecHits);
     NumberOfValidRecHitsPerTrack-> Fill(nValidRecHits);
     NumberOfLostRecHitsPerTrack -> Fill(nLostRecHits);
+    NumberOfMIRecHitsPerTrack -> Fill(nLostIn);
+    NumberOfMORecHitsPerTrack -> Fill(nLostOut);
+    ValidFractionPerTrack -> Fill(track.validFraction());
+
 
     // 2D plots    
-    if ( doRecHitVsPhiVsEtaPerTrack_ || doAllPlots_ )
-      NumberOfRecHitVsPhiVsEtaPerTrack->Fill(eta,phi,nRecHits);
-    
-    int nLayers = track.hitPattern().trackerLayersWithMeasurement();
+    if ( doRecHitVsPhiVsEtaPerTrack_ || doAllPlots_ ) {
+      NumberOfValidRecHitVsPhiVsEtaPerTrack->Fill(etaIn,phiIn,nValidRecHits);
+      NumberOfLostRecHitVsPhiVsEtaPerTrack->Fill(etaIn,phiIn,nLostRecHits);
+      NumberOfMIRecHitVsPhiVsEtaPerTrack->Fill(etaIn,phiIn,nLostIn);
+      NumberOfMORecHitVsPhiVsEtaPerTrack->Fill(etaOut,phiOut,nLostOut);
+      ValidFractionVsPhiVsEtaPerTrack -> Fill(etaIn,phiIn,track.validFraction());
+    }
+
+    int nLayers[4]   = { track.hitPattern().trackerLayersWithMeasurement(),
+                         track.hitPattern().trackerLayersTotallyOffOrBad(),
+                         track.hitPattern().numberOfValidStripLayersWithMonoAndStereo() +  track.hitPattern().pixelLayersWithMeasurement(),
+                         track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS)
+                       };
+
     // layers
-    NumberOfLayersPerTrack->Fill(nLayers);
+    for (int i=0;i<4;++i) NumberOfLayersPerTrack[i]->Fill(nLayers[i]);
 
     // 2D plots    
     if ( doLayersVsPhiVsEtaPerTrack_ || doAllPlots_ )
-      NumberOfLayersVsPhiVsEtaPerTrack->Fill(eta,phi,nLayers);
+      for (int i=0;i<4;++i) NumberOfLayersVsPhiVsEtaPerTrack[i]->Fill(etaIn,phiIn,nLayers[i]);
+
   }
-  
+
+  if (doEffFromHitPatternVsPU_ || doAllPlots_) fillHistosForEfficiencyFromHitPatter(track,"",     good_vertices_);
+  if (doEffFromHitPatternVsBX_ || doAllPlots_) fillHistosForEfficiencyFromHitPatter(track,"VsBX", bx_);
+
+
   if (doGeneralPropertiesPlots_ || doAllPlots_){
     // fitting
     Chi2     -> Fill(chi2);
@@ -680,6 +959,14 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
     // algorithm
     algorithm->Fill(static_cast<double>(track.algo()));
+    oriAlgo->Fill(static_cast<double>(track.originalAlgo()));
+
+    // stopping source
+    int max = stoppingSource->getNbinsX();
+    double stop = track.stopReason() > max ? double(max-1) : static_cast<double>(track.stopReason());
+    stoppingSource->Fill(stop);
+    stoppingSourceVSeta->Fill(track.eta(),stop);
+    stoppingSourceVSphi->Fill(track.phi(),stop);
   }
 
   if ( doLumiAnalysis_ ) {
@@ -687,13 +974,14 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     Chi2oNDF_lumiFlag                -> Fill(chi2oNDF);
   }
 
-  if(doDCAPlots_ || doBSPlots_ || doAllPlots_) {
+  if(doDCAPlots_ || doBSPlots_ || doSIPPlots_ || doAllPlots_) {
     
     edm::Handle<reco::BeamSpot> recoBeamSpotHandle;
     iEvent.getByToken(beamSpotToken_,recoBeamSpotHandle);
-    reco::BeamSpot bs = *recoBeamSpotHandle;      
+    const reco::BeamSpot& bs = *recoBeamSpotHandle;
 
     DistanceOfClosestApproachToBS      -> Fill(track.dxy(bs.position()));
+    AbsDistanceOfClosestApproachToBS   -> Fill(std::abs(track.dxy(bs.position())));
     DistanceOfClosestApproachToBSVsPhi -> Fill(track.phi(), track.dxy(bs.position()));
     zPointOfClosestApproachVsPhi       -> Fill(track.phi(), track.vz());
     xPointOfClosestApproachVsZ0wrt000  -> Fill(track.dz(),  track.vx());
@@ -704,13 +992,18 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       TESTDistanceOfClosestApproachToBS      -> Fill(track.dxy(bs.position(track.vz())));
       TESTDistanceOfClosestApproachToBSVsPhi -> Fill(track.phi(), track.dxy(bs.position(track.vz())));
     }
+
+    if(doSIPPlots_) {
+      sipDxyToBS->Fill(track.dxy(bs.position())/track.dxyError());
+      sipDzToBS->Fill(track.dz(bs.position())/track.dzError());
+    }
   }
   
-  if(doDCAPlots_ || doPVPlots_ || doAllPlots_) {
+  if(doDCAPlots_ || doPVPlots_ || doSIPPlots_ || doAllPlots_) {
     edm::Handle<reco::VertexCollection> recoPrimaryVerticesHandle;
     iEvent.getByToken(pvToken_,recoPrimaryVerticesHandle);
-    if (recoPrimaryVerticesHandle->size() > 0) {
-      reco::Vertex pv = recoPrimaryVerticesHandle->at(0);      
+    if (recoPrimaryVerticesHandle.isValid() && recoPrimaryVerticesHandle->size() > 0) {
+      const reco::Vertex& pv = (*recoPrimaryVerticesHandle)[0];
     
 
       //////////////////
@@ -726,6 +1019,10 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
            if(xyerr2 > 0) transDCAsig = track.dxy(pv.position())/xyerr2;	   
 	   LongDCASig->Fill(longDCAsig);
 	   TransDCASig->Fill(transDCAsig);
+
+
+	   
+
 	   if(track.quality(reco::TrackBase::qualityByName(qualityString_)) ==1)
 	     {
 	       dNdEta_HighPurity->Fill(track.eta());
@@ -733,15 +1030,34 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 	       dNdPt_HighPurity->Fill(track.ptError()/track.pt());
 	       NhitVsEta_HighPurity->Fill(track.eta(),track.numberOfValidHits());
 	       NhitVsPhi_HighPurity->Fill(track.phi(),track.numberOfValidHits());
+	       dNhitdPt_HighPurity->Fill(track.pt(),track.numberOfValidHits());
+	       Ptdist_HighPurity->Fill(track.pt());
 	     }//end of high quality tracks requirement
         }
 
 
-
+      xPointOfClosestApproachToPV->Fill(track.vx()-pv.position().x());
+      yPointOfClosestApproachToPV->Fill(track.vy()-pv.position().y());
+      zPointOfClosestApproachToPV->Fill(track.dz(pv.position()));
       DistanceOfClosestApproachToPV      -> Fill(track.dxy(pv.position()));
       DistanceOfClosestApproachToPVVsPhi -> Fill(track.phi(), track.dxy(pv.position()));
       xPointOfClosestApproachVsZ0wrtPV   -> Fill(track.dz(pv.position()),(track.vx()-pv.position().x()));
       yPointOfClosestApproachVsZ0wrtPV   -> Fill(track.dz(pv.position()),(track.vy()-pv.position().y()));
+
+
+      if(doSIPPlots_) {
+        edm::ESHandle<TransientTrackBuilder> theB;
+        iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",theB);
+        reco::TransientTrack transTrack = theB->build(track);
+
+        GlobalVector dir(track.px(), track.py(), track.pz());
+        std::pair<bool, Measurement1D> ip3d = IPTools::signedImpactParameter3D(transTrack, dir, pv);
+        std::pair<bool, Measurement1D> ip2d = IPTools::signedTransverseImpactParameter(transTrack, dir, pv);
+        if(ip3d.first) sip3dToPV->Fill(ip3d.second.value() / ip3d.second.error());
+        if(ip2d.first) sip2dToPV->Fill(ip2d.second.value() / ip2d.second.error());
+        sipDxyToPV->Fill(track.dxy(pv.position())/track.dxyError());
+        sipDzToPV->Fill(track.dz(pv.position())/track.dzError());
+      }
     }
   }
 
@@ -782,6 +1098,63 @@ void TrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   if ( doAllPlots_ ) {
   }
 
+}
+
+void TrackAnalyzer::fillHistosForEfficiencyFromHitPatter(const reco::Track & track, const std::string suffix, const unsigned int monitoring) {
+
+  if (doEffFromHitPatternVsPU_ || doEffFromHitPatternVsBX_ || doAllPlots_) {
+    
+    int mon = -1;
+    for (int i=0; i<monQuantity::END; i++) {
+      if (monName[i] == suffix) mon = i;
+    }
+
+    if (track.pt() > 1.0 && track.dxy() < 0.1 and monitoring > 0) {
+      auto hp = track.hitPattern();
+      // Here hit_category is meant to iterate over
+      // reco::HitPattern::HitCategory, defined here:
+      // http://cmslxr.fnal.gov/dxr/CMSSW/source/DataFormats/TrackReco/interface/HitPattern.h
+      for (unsigned int category = 0; category < 3; ++category) {
+        for (int hit = 0; hit < hp.numberOfHits((reco::HitPattern::HitCategory)(category)); ++hit) {
+          auto pattern = hp.getHitPattern((reco::HitPattern::HitCategory)(category), hit);
+          // Boolean bad is missing simply because it is inferred and the only missing case.
+          bool valid = hp.validHitFilter(pattern);
+          bool missing = hp.missingHitFilter(pattern);
+          bool inactive = hp.inactiveHitFilter(pattern);
+          int hit_type = -1;
+          hit_type = valid ? 0 :
+              ( missing ? 1 :
+                ( inactive ? 2 : 3));
+          if (hits_valid_.find(Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)) == hits_valid_.end()) {
+            LogDebug("TrackAnalyzer") << "Invalid combination of detector and subdetector: ("
+                                      << hp.getSubStructure(pattern) << ", "
+                                      << hp.getSubSubStructure(pattern)
+                                      << "): ignoring it.\n";
+            continue;
+          }
+          switch (hit_type) {
+            case 0:
+              hits_valid_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              hits_total_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              break;
+            case 1:
+              hits_missing_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              hits_total_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              break;
+            case 2:
+              hits_inactive_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              break;
+            case 3:
+              hits_bad_[Key(hp.getSubStructure(pattern), hp.getSubSubStructure(pattern), mon)]->Fill(monitoring);
+              break;
+            default:
+              LogDebug("TrackAnalyzer") << "Invalid hit category used " << hit_type << " ignored\n";
+          }
+        }
+      }
+    }
+  }
+  
 }
 
 // book histograms at differnt measurement points
@@ -955,6 +1328,23 @@ void TrackAnalyzer::bookHistosForState(std::string sname, DQMStore::IBooker & ib
     tkmes.TrackEta->setAxisTitle("Track #eta", 1);
     tkmes.TrackEta->setAxisTitle("Number of Tracks",2);
 
+    histname = "TrackEtaPhi_" + histTag;
+    tkmes.TrackEtaPhi = ibooker.book2D(histname, histname, EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax);
+    tkmes.TrackEtaPhi->setAxisTitle("Track #eta", 1);
+    tkmes.TrackEtaPhi->setAxisTitle("Track #phi", 2);
+
+    histname = "TrackEtaPhiInner_" + histTag;
+    tkmes.TrackEtaPhiInner = ibooker.book2D(histname, histname, EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax);
+    tkmes.TrackEtaPhiInner->setAxisTitle("Track #eta", 1);
+    tkmes.TrackEtaPhiInner->setAxisTitle("Track #phi", 2);
+
+    histname = "TrackEtaPhiOuter_" + histTag;
+    tkmes.TrackEtaPhiOuter = ibooker.book2D(histname, histname, EtaBin, EtaMin, EtaMax, PhiBin, PhiMin, PhiMax);
+    tkmes.TrackEtaPhiOuter->setAxisTitle("Track #eta", 1);
+    tkmes.TrackEtaPhiOuter->setAxisTitle("Track #phi", 2);
+
+
+
     if (doThetaPlots_) {  
       histname = "TrackTheta_" + histTag;
       tkmes.TrackTheta = ibooker.book1D(histname, histname, ThetaBin, ThetaMin, ThetaMax);
@@ -1095,6 +1485,12 @@ void TrackAnalyzer::fillHistosForState(const edm::EventSetup& iSetup, const reco
     double p, px, py, pz, pt, theta, phi, eta, q;
     double pxerror, pyerror, pzerror, pterror, perror, phierror, etaerror;
 
+    auto phiIn =  track.innerPosition().phi();
+    auto etaIn =  track.innerPosition().eta();
+    auto phiOut =  track.outerPosition().phi();
+    auto etaOut =  track.outerPosition().eta();
+
+
     if (sname == "default") {
 
       p     = track.p();
@@ -1167,6 +1563,10 @@ void TrackAnalyzer::fillHistosForState(const edm::EventSetup& iSetup, const reco
       // angles
       tkmes.TrackPhi->Fill(phi);
       tkmes.TrackEta->Fill(eta);
+      tkmes.TrackEtaPhi->Fill(eta,phi);
+      tkmes.TrackEtaPhiInner->Fill(etaIn,phiIn);
+      tkmes.TrackEtaPhiOuter->Fill(etaOut,phiOut);
+
       if (doThetaPlots_) {
 	tkmes.TrackTheta->Fill(theta);
       }
@@ -1196,7 +1596,7 @@ void TrackAnalyzer::fillHistosForState(const edm::EventSetup& iSetup, const reco
       tkmes.NumberOfValidRecHitsPerTrackVsPhi->Fill(phi,    nValidRecHits);
       tkmes.NumberOfValidRecHitsPerTrackVsEta->Fill(eta,    nValidRecHits);
 
-      int nLayers = track.hitPattern().stripLayersWithMeasurement();
+      int nLayers = track.hitPattern().trackerLayersWithMeasurement();
       // rec layers 
       tkmes.NumberOfLayersPerTrackVsPhi->Fill(phi,     nLayers);
       if (doThetaPlots_) {

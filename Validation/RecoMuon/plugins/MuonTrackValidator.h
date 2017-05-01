@@ -22,6 +22,7 @@ class MuonTrackValidator : public DQMEDAnalyzer, protected MuonTrackValidatorBas
     dirName_ = pset.getParameter<std::string>("dirName");
     associatormap = pset.getParameter< edm::InputTag >("associatormap");
     UseAssociators = pset.getParameter< bool >("UseAssociators");
+    useGEMs_ = pset.getParameter< bool >("useGEMs");
     tpSelector = TrackingParticleSelector(pset.getParameter<double>("ptMinTP"),
 					  pset.getParameter<double>("minRapidityTP"),
 					  pset.getParameter<double>("maxRapidityTP"),
@@ -29,6 +30,7 @@ class MuonTrackValidator : public DQMEDAnalyzer, protected MuonTrackValidatorBas
 					  pset.getParameter<double>("lipTP"),
 					  pset.getParameter<int>("minHitTP"),
 					  pset.getParameter<bool>("signalOnlyTP"),
+					  pset.getParameter<bool>("intimeOnlyTP"),
 					  pset.getParameter<bool>("chargedOnlyTP"),
 					  pset.getParameter<bool>("stableOnlyTP"),
 					  pset.getParameter<std::vector<int> >("pdgIdTP"));
@@ -59,6 +61,8 @@ class MuonTrackValidator : public DQMEDAnalyzer, protected MuonTrackValidatorBas
     }
     simToRecoCollection_Token = consumes<reco::SimToRecoCollection>(associatormap);
     recoToSimCollection_Token = consumes<reco::RecoToSimCollection>(associatormap);
+
+    _simHitTpMapTag = mayConsume<SimHitTPAssociationProducer::SimHitTPAssociationList>(pset.getParameter<edm::InputTag>("simHitTpMapTag"));
 
     MABH = false;
     if (!UseAssociators) {
@@ -155,7 +159,10 @@ private:
   edm::InputTag associatormap;
   edm::EDGetTokenT<reco::SimToRecoCollection> simToRecoCollection_Token;
   edm::EDGetTokenT<reco::RecoToSimCollection> recoToSimCollection_Token;
+  edm::EDGetTokenT<SimHitTPAssociationProducer::SimHitTPAssociationList> _simHitTpMapTag;
+
   bool UseAssociators;
+  bool useGEMs_;
   double minPhi, maxPhi;
   int nintPhi;
   bool useGsf;

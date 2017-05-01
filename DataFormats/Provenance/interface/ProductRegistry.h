@@ -13,6 +13,8 @@
 #include "DataFormats/Provenance/interface/BranchListIndex.h"
 #include "DataFormats/Provenance/interface/BranchType.h"
 #include "FWCore/Utilities/interface/ProductHolderIndex.h"
+#include "FWCore/Utilities/interface/TypeID.h"
+#include "FWCore/Utilities/interface/get_underlying_safe.h"
 
 #include "boost/array.hpp"
 #include <memory>
@@ -22,7 +24,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "FWCore/Utilities/interface/HideStdSharedPtrFromRoot.h"
 
 namespace edm {
   class ProductHolderIndexHelper;
@@ -98,12 +99,8 @@ namespace edm {
 
     bool anyProducts(BranchType const brType) const;
 
-    ConstProductList& constProductList() {
-       //throwIfNotFrozen();
-       return transient_.constProductList_;
-    }
-
-    std::shared_ptr<ProductHolderIndexHelper> const& productLookup(BranchType branchType) const;
+    std::shared_ptr<ProductHolderIndexHelper const> productLookup(BranchType branchType) const;
+    std::shared_ptr<ProductHolderIndexHelper> productLookup(BranchType branchType);
 
     // returns the appropriate ProductHolderIndex else ProductHolderIndexInvalid if no BranchID is available
     ProductHolderIndex indexFrom(BranchID const& iID) const;
@@ -111,11 +108,11 @@ namespace edm {
     bool productProduced(BranchType branchType) const {return transient_.productProduced_[branchType];}
     bool anyProductProduced() const {return transient_.anyProductProduced_;}
 
-    std::vector<std::string> const& missingDictionaries() const {
+    std::vector<TypeID> const& missingDictionaries() const {
       return transient_.missingDictionaries_;
     }
 
-    std::vector<std::string>& missingDictionariesForUpdate() {
+    std::vector<TypeID>& missingDictionariesForUpdate() {
       return transient_.missingDictionaries_;
     }
 
@@ -132,15 +129,22 @@ namespace edm {
     struct Transients {
       Transients();
       void reset();
+
+      std::shared_ptr<ProductHolderIndexHelper const> eventProductLookup() const {return get_underlying_safe(eventProductLookup_);}
+      std::shared_ptr<ProductHolderIndexHelper>& eventProductLookup() {return get_underlying_safe(eventProductLookup_);}
+      std::shared_ptr<ProductHolderIndexHelper const> lumiProductLookup() const {return get_underlying_safe(lumiProductLookup_);}
+      std::shared_ptr<ProductHolderIndexHelper>& lumiProductLookup() {return get_underlying_safe(lumiProductLookup_);}
+      std::shared_ptr<ProductHolderIndexHelper const> runProductLookup() const {return get_underlying_safe(runProductLookup_);}
+      std::shared_ptr<ProductHolderIndexHelper>& runProductLookup() {return get_underlying_safe(runProductLookup_);}
+
       bool frozen_;
-      ConstProductList constProductList_;
       // Is at least one (run), (lumi), (event) product produced this process?
       boost::array<bool, NumBranchTypes> productProduced_;
       bool anyProductProduced_;
 
-      std::shared_ptr<ProductHolderIndexHelper> eventProductLookup_;
-      std::shared_ptr<ProductHolderIndexHelper> lumiProductLookup_;
-      std::shared_ptr<ProductHolderIndexHelper> runProductLookup_;
+      edm::propagate_const<std::shared_ptr<ProductHolderIndexHelper>> eventProductLookup_;
+      edm::propagate_const<std::shared_ptr<ProductHolderIndexHelper>> lumiProductLookup_;
+      edm::propagate_const<std::shared_ptr<ProductHolderIndexHelper>> runProductLookup_;
 
       ProductHolderIndex eventNextIndexValue_;
       ProductHolderIndex lumiNextIndexValue_;
@@ -148,7 +152,7 @@ namespace edm {
 
       std::map<BranchID, ProductHolderIndex> branchIDToIndex_;
 
-      std::vector<std::string> missingDictionaries_;
+      std::vector<TypeID> missingDictionaries_;
 
       std::vector<std::pair<std::string, std::string> > aliasToOriginal_;
     };
@@ -161,7 +165,6 @@ namespace edm {
 
     void freezeIt(bool frozen = true) {transient_.frozen_ = frozen;}
 
-    void updateConstProductRegistry();
     void initializeLookupTables();
     virtual void addCalled(BranchDescription const&, bool iFromListener);
     void throwIfNotFrozen() const;

@@ -32,7 +32,6 @@ If failedToGet() returns false but isValid() is also false then no attempt
 #include "FWCore/Utilities/interface/GCC11Compatibility.h"
 
 #include <memory>
-#include "FWCore/Utilities/interface/HideStdSharedPtrFromRoot.h"
 
 namespace cms {
   class Exception;
@@ -54,8 +53,8 @@ namespace edm {
       whyFailedFactory_(h.whyFailedFactory_){}
 
     explicit BasicHandle(ProductData const& productData) :
-      product_(productData.wrapper_.get()),
-      prov_(&productData.prov_) {
+      product_(productData.wrapper()),
+      prov_(&productData.provenance()) {
     }
 
 #if defined( __GXX_EXPERIMENTAL_CXX0X__)

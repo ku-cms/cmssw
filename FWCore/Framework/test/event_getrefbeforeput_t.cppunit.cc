@@ -21,7 +21,6 @@ Test of the EventPrincipal class.
 #include "FWCore/Framework/interface/LuminosityBlockPrincipal.h"
 #include "FWCore/Framework/interface/RunPrincipal.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/RootAutoLibraryLoader/interface/RootAutoLibraryLoader.h"
 #include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/Utilities/interface/GetPassID.h"
 #include "FWCore/Utilities/interface/GlobalIdentifier.h"
@@ -37,10 +36,7 @@ Test of the EventPrincipal class.
 #include <string>
 #include <typeinfo>
 
-//have to do this evil in order to access commit_ member function
-#define private public
 #include "FWCore/Framework/interface/Event.h"
-#undef private
 
 class testEventGetRefBeforePut: public CppUnit::TestFixture {
 CPPUNIT_TEST_SUITE(testEventGetRefBeforePut);
@@ -49,7 +45,6 @@ CPPUNIT_TEST(getRefTest);
 CPPUNIT_TEST_SUITE_END();
 public:
   void setUp(){
-    edm::RootAutoLibraryLoader::enable();
   }
   void tearDown(){}
   void failGetProductNotRegisteredTest();

@@ -1,4 +1,5 @@
 #include "RecoParticleFlow/PFTracking/interface/PFDisplacedVertexFinder.h"
+#include "RecoParticleFlow/PFTracking/interface/PFTrackAlgoTools.h"
 
 #include "FWCore/Utilities/interface/Exception.h"
 
@@ -285,8 +286,18 @@ PFDisplacedVertexFinder::fitVertexFromSeed(PFDisplacedVertexSeed& displacedVerte
     TransientTrack tmpTk( *((*ie).get()), magField_, globTkGeomHandle_);
     transTracksRaw.push_back( tmpTk );
     transTracksRefRaw.push_back( *ie );
-    if ( (*ie)->algo()-4 > 3 ) nStep45++;
-    if ( (*ie)->algo()-4 < 0 ||(*ie)->algo()-4 > 5 ) nNotIterative++;
+    bool nonIt = PFTrackAlgoTools::nonIterative((*ie)->algo());
+    bool step45 = PFTrackAlgoTools::step45((*ie)->algo());
+    bool highQ = PFTrackAlgoTools::highQuality((*ie)->algo());   
+    if (step45)
+      nStep45++;
+    else if (nonIt)
+      nNotIterative++;
+    else if (!highQ) {
+      nNotIterative++;
+      nStep45++;
+    }
+
   }
 
   if (rho > 25 && nStep45 + nNotIterative < 1){

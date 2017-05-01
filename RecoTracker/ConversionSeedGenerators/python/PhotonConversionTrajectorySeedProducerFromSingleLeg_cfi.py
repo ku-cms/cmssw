@@ -1,4 +1,5 @@
 import FWCore.ParameterSet.Config as cms
+from Configuration.StandardSequences.Eras import eras
 
 photonConvTrajSeedFromSingleLeg  = cms.EDProducer("PhotonConversionTrajectorySeedProducerFromSingleLeg",
                                                   TrackRefitter        = cms.InputTag('TrackRefitter',''),
@@ -40,6 +41,15 @@ photonConvTrajSeedFromSingleLeg  = cms.EDProducer("PhotonConversionTrajectorySee
                                                   SeedCreatorPSet = cms.PSet(
                                                       ComponentName = cms.string('SeedForPhotonConversion1Leg'),
                                                       SeedMomentumForBOFF = cms.double(5.0),
-                                                      propagator = cms.string('PropagatorWithMaterial')
+                                                      propagator = cms.string('PropagatorWithMaterial'),
+                                                      TTRHBuilder = cms.string('WithTrackAngle')
                                                       )
                                                   )
+eras.trackingLowPU.toModify(photonConvTrajSeedFromSingleLeg,
+    OrderedHitsFactoryPSet = dict(maxElement = 10000),
+    ClusterCheckPSet = dict(
+        MaxNumberOfCosmicClusters = 150000,
+        MaxNumberOfPixelClusters = 20000,
+        cut = "strip < 150000 && pixel < 20000 && (strip < 20000 + 7* pixel)"
+    )
+)

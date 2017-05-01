@@ -21,7 +21,7 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/one/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -55,7 +55,7 @@
 #include "FWCore/Utilities/interface/RandomNumberGenerator.h"
 #include "FWCore/Utilities/interface/Exception.h"
 
-SiStripDigitizer::SiStripDigitizer(const edm::ParameterSet& conf, edm::one::EDProducerBase& mixMod, edm::ConsumesCollector& iC) : 
+SiStripDigitizer::SiStripDigitizer(const edm::ParameterSet& conf, edm::stream::EDProducerBase& mixMod, edm::ConsumesCollector& iC) : 
   gainLabel(conf.getParameter<std::string>("Gain")),
   hitsProducer(conf.getParameter<std::string>("hitsProducer")),
   trackerContainers(conf.getParameter<std::vector<std::string> >("ROUList")),
@@ -125,7 +125,7 @@ void SiStripDigitizer::accumulateStripHits(edm::Handle<std::vector<PSimHit> > hS
   SiStripDigitizer::accumulate(edm::Event const& iEvent, edm::EventSetup const& iSetup) {
     //Retrieve tracker topology from geometry
     edm::ESHandle<TrackerTopology> tTopoHand;
-    iSetup.get<IdealGeometryRecord>().get(tTopoHand);
+    iSetup.get<TrackerTopologyRcd>().get(tTopoHand);
     const TrackerTopology *tTopo=tTopoHand.product();
 
     // Step A: Get Inputs
@@ -149,7 +149,7 @@ void SiStripDigitizer::accumulateStripHits(edm::Handle<std::vector<PSimHit> > hS
   SiStripDigitizer::accumulate(PileUpEventPrincipal const& iEvent, edm::EventSetup const& iSetup, edm::StreamID const& streamID) {
 
     edm::ESHandle<TrackerTopology> tTopoHand;
-    iSetup.get<IdealGeometryRecord>().get(tTopoHand);
+    iSetup.get<TrackerTopologyRcd>().get(tTopoHand);
     const TrackerTopology *tTopo=tTopoHand.product();
 
     // Step A: Get Inputs

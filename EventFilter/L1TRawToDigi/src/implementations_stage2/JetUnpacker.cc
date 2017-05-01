@@ -2,7 +2,11 @@
 
 #include "EventFilter/L1TRawToDigi/interface/Unpacker.h"
 
-#include "CaloCollections.h"
+#include "L1Trigger/L1TCalorimeter/interface/CaloTools.h"
+
+#include "L1TObjectCollections.h"
+
+#include "L1TStage2Layer2Constants.h"
 
 namespace l1t {
    namespace stage2 {
@@ -21,31 +25,32 @@ namespace stage2 {
    JetUnpacker::unpack(const Block& block, UnpackerCollections *coll)
    {
 
+     using namespace l1t::stage2::layer2;
+
      LogDebug("L1T") << "Block ID  = " << block.header().getID() << " size = " << block.header().getSize();
 
-     int nBX = int(ceil(block.header().getSize() / 12.)); // Since there are 12 jets reported per event (see CMS IN-2013/005)
+     int nBX = int(ceil(block.header().getSize() / (double) demux::nOutputFramePerBX )); // 6 frames per BX
 
      // Find the first and last BXs
      int firstBX = -(ceil((double)nBX/2.)-1);
      int lastBX;
      if (nBX % 2 == 0) {
-       lastBX = ceil((double)nBX/2.)+1;
-     } else {
        lastBX = ceil((double)nBX/2.);
+     } else {
+       lastBX = ceil((double)nBX/2.)-1;
      }
 
-     auto res_ = static_cast<CaloCollections*>(coll)->getJets();
+     auto res_ = static_cast<L1TObjectCollections*>(coll)->getJets();
      res_->setBXRange(firstBX, lastBX);
 
      LogDebug("L1T") << "nBX = " << nBX << " first BX = " << firstBX << " lastBX = " << lastBX;
 
-     // Initialise index
-     int unsigned i = 0;
-
      // Loop over multiple BX and then number of jets filling jet collection
-     for (int bx=firstBX; bx<lastBX; bx++){
-       for (unsigned nJet=0; nJet < 12 && nJet < block.header().getSize(); nJet++){
-         uint32_t raw_data = block.payload()[i++];
+     for (int bx=firstBX; bx<=lastBX; bx++){
+       for (unsigned iJet=0; iJet < demux::nJetPerLink && iJet < block.header().getSize(); iJet++){
+
+	 int iFrame = (bx-firstBX)*demux::nOutputFramePerBX + iJet;
+         uint32_t raw_data = block.payload().at(iFrame);
 
          if (raw_data == 0)
             continue;
@@ -53,10 +58,12 @@ namespace stage2 {
          l1t::Jet jet = l1t::Jet();
 
          jet.setHwPt(raw_data & 0x7FF);
+
+	 if (jet.hwPt()==0) continue;
          
          int abs_eta = (raw_data >> 11) & 0x7F;
          if ((raw_data >> 18) & 0x1) {
-           jet.setHwEta(-1 * abs_eta);
+           jet.setHwEta(-1 * (128-abs_eta));
          } else {
            jet.setHwEta(abs_eta);
          }
@@ -64,9 +71,11 @@ namespace stage2 {
 	 jet.setHwPhi((raw_data >> 19) & 0xFF);
          jet.setHwQual((raw_data >> 27) & 0x7); // Assume 3 bits for now? Leaves 2 bits spare
 
-         LogDebug("L1T") << "Jet: eta " << jet.hwEta() << " phi " << jet.hwPhi() << " pT " << jet.hwPt() << " qual " << jet.hwQual();
+         LogDebug("L1T") << "Jet: eta " << jet.hwEta() << " phi " << jet.hwPhi() << " pT " << jet.hwPt() << " qual " << jet.hwQual() << " bx " << bx;
 
-         res_->push_back(bx,jet);
+	 jet.setP4( l1t::CaloTools::p4Demux(&jet) );
+
+         res_->push_back(bx, jet);
        }
      }
 

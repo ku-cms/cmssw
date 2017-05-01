@@ -5,7 +5,7 @@
 
 // #include<iostream>
 
-class ProjectedSiStripRecHit2D GCC11_FINAL  : public TrackerSingleRecHit  {
+class ProjectedSiStripRecHit2D final  : public TrackerSingleRecHit  {
 public:
   
   inline static bool isMono(GeomDet const & gdet, GeomDet const & sdet) {
@@ -76,7 +76,7 @@ private:
   virtual ProjectedSiStripRecHit2D * clone(TkCloner const& cloner, TrajectoryStateOnSurface const& tsos) const {
     return cloner(*this,tsos).release();
   }
-#ifdef NO_DICT
+#ifndef __GCCXML__
   virtual  ConstRecHitPointer cloneSH(TkCloner const& cloner, TrajectoryStateOnSurface const& tsos) const {
     return cloner.makeShared(*this,tsos);
   }

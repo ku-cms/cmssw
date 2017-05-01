@@ -144,7 +144,8 @@ double
 EventShapeVariables::sphericity(double r) const
 {
   TVectorD eigenValues = compEigenValues(r);
-  return 1.5*(eigenValues(1) + eigenValues(2));
+  double esum = eigenValues.Sum();
+  return 1.5*(eigenValues(1) + eigenValues(2))/esum;
 }
 
 /// 1.5*q1 where 0<=q1<=q2<=q3 are the eigenvalues of the momentum tensor sum{p_j[a]*p_j[b]}/sum{p_j**2} 
@@ -153,7 +154,8 @@ double
 EventShapeVariables::aplanarity(double r) const
 {
   TVectorD eigenValues = compEigenValues(r);
-  return 1.5*eigenValues(2);
+  double esum = eigenValues.Sum();
+  return 1.5*eigenValues(2)/esum;
 }
 
 /// 3.*(q1*q2+q1*q3+q2*q3) where 0<=q1<=q2<=q3 are the eigenvalues of the momentum tensor sum{p_j[a]*p_j[b]}/sum{p_j**2} 
@@ -163,7 +165,8 @@ double
 EventShapeVariables::C(double r) const
 {
   TVectorD eigenValues = compEigenValues(r);
-  return 3.*(eigenValues(0)*eigenValues(1) + eigenValues(0)*eigenValues(2) + eigenValues(1)*eigenValues(2));
+  double esum = eigenValues.Sum();
+  return 3.*(eigenValues(0)*eigenValues(1) + eigenValues(0)*eigenValues(2) + eigenValues(1)*eigenValues(2))/(esum*esum);
 }
 
 /// 27.*(q1*q2*q3) where 0<=q1<=q2<=q3 are the eigenvalues of the momemtum tensor sum{p_j[a]*p_j[b]}/sum{p_j**2} 
@@ -173,8 +176,79 @@ double
 EventShapeVariables::D(double r) const
 {
   TVectorD eigenValues = compEigenValues(r);
-  return 27.*eigenValues(0)*eigenValues(1)*eigenValues(2);
+  double esum = eigenValues.Sum();
+  return 27.*eigenValues(0)*eigenValues(1)*eigenValues(2)/(esum*esum*esum);
+}
+
+
+double
+EventShapeVariables::thrust( int& numberOfSteps = 100 ) const
+{
+  const double deltaPhi=2*TMath::Pi()/numberOfSteps;
+  const double deltaRho=TMath::Pi()/numberOfSteps;
+  double thrust=-1;
+  double phi=0;
+  double rho=0;
+  double area = 0;
+  for ( unsigned int i = 0; i < (int)inputVectors_.size(); ++i ){
+  	area+=sqrt(inputVectors_[i].X()*inputVectors_[i].X()+inputVectors_[i].Y()*inputVectors_[i].Y()+inputVectors_[i].Z()*inputVectors_[i].Z());
+  }
+  for(unsigned int i=0; i<numberOfSteps; ++i){
+    	phi+=deltaPhi; 
+    	for(unsigned int k=0; k<numberOfSteps; ++k){
+        	rho+=deltaRho;
+        	double asum=0;
+        	double tmp=0;
+        	for(unsigned int j=0; j<inputVectors_.size(); ++j){
+                	asum+=abs(cos(phi)*cos(rho)*inputVectors[j].X()+sin(phi)*cos(rho)*inputVectors[j].Y()+sin(rho)*inputVectors[j].Z());
+        	}
+		tmp=asum/area;
+        	if( thrust<0 || tmp>thrust ){
+                	thrust=tmp;
+		}
+	}
+  }
+  return thrust;
+
+}
+
+
+double
+EventShapeVariables::thrustminor( int& numberOfSteps = 100 ) const
+{
+  const double deltaPhi=2*TMath::Pi()/numberOfSteps;
+  const double deltaRho=TMath::Pi()/numberOfSteps;
+  double thrust=10;
+  double phi=0;
+  double rho=0;
+  double area = 0;
+  for ( unsigned int i = 0; i < (int)inputVectors_.size(); ++i ){
+        area+=sqrt(inputVectors_[i].X()*inputVectors_[i].X()+inputVectors_[i].Y()*inputVectors_[i].Y()+inputVectors_[i].Z()*inputVectors_[i].Z());
+  }
+  for(unsigned int i=0; i<numberOfSteps; ++i){
+        phi+=deltaPhi;
+        for(unsigned int k=0; k<numberOfSteps; ++k){
+                rho+=deltaRho;
+                double asum=0;
+                double tmp=2;
+		double xs=0;
+		double ys=0; 
+		double zs=0;
+                for(unsigned int j=0; j<inputVectors_.size(); ++j){
+                        xs = sin(phi)*cos(rho)*inputVectorsi_[j].Z() - sin(rho)*inputVectors_[j].Y();
+                	ys = sin(rho)*inputVectors_[j].X() - cos(phi)*cos(rho)*inputVectors_[j].Z();
+                	zs = cos(phi)*cos(rho)*inputVectors_[j].Y() - sin(phi)*cos(rho)*inputVectors_[j].X();
+                	asum+=sqrt(xs*xs+ys*ys+zs*zs);
+		}
+                tmp=asum/area;
+                if( thrust>2 || tmp<thrust ){
+                        thrust=tmp;
+                }
+        }
+  }
+  return thrust;
 }
 
 
 
+}

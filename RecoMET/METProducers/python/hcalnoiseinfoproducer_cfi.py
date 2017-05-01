@@ -107,16 +107,19 @@ hcalnoise = cms.EDProducer(
     maxCaloTowerIEta = cms.int32(20),
     maxTrackEta = cms.double(2.0),
     minTrackPt = cms.double(1.0),
+    maxNHF = cms.double(0.9),
+    maxjetindex = cms.int32(0),
 
     # collection names
     digiCollName = cms.string('hcalDigis'),
     recHitCollName = cms.string('hbhereco'),
     caloTowerCollName = cms.string('towerMaker'),
     trackCollName = cms.string('generalTracks'),
+    jetCollName = cms.string('ak4PFJets'),
 
     # severity level
     HcalAcceptSeverityLevel = cms.uint32(9),
 
-    # which hcal calo flags to mask (HBHEIsolatedNoise=11, HBHEFlatNoise=12, HBHESpikeNoise=13, HBHETriangleNoise=14, HBHETS4TS5Noise=15)
-    HcalRecHitFlagsToBeExcluded = cms.vint32(11, 12, 13, 14, 15),
+    # which hcal calo flags to mask (HBHEIsolatedNoise=11, HBHEFlatNoise=12, HBHESpikeNoise=13, HBHETriangleNoise=14, HBHETS4TS5Noise=15, HBHENegativeNoise=27)
+    HcalRecHitFlagsToBeExcluded = cms.vint32(11, 12, 13, 14, 15, 27)
 )

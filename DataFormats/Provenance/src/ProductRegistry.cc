@@ -15,6 +15,7 @@
 #include "FWCore/Utilities/interface/Algorithms.h"
 #include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/Utilities/interface/DictionaryTools.h"
+#include "FWCore/Utilities/interface/TypeID.h"
 #include "FWCore/Utilities/interface/TypeWithDict.h"
 #include "FWCore/Utilities/interface/WrappedClassName.h"
 
@@ -25,16 +26,6 @@
 #include <ostream>
 
 namespace edm {
-  namespace {
-    void checkDicts(BranchDescription const& productDesc) {
-      if(productDesc.transient()) {
-        checkDictionaries(productDesc.fullClassName(), true);
-        checkDictionaries(wrappedClassName(productDesc.fullClassName()), true);
-      } else {
-        checkDictionaries(wrappedClassName(productDesc.fullClassName()), false);
-      }
-    }
-  }
 
   ProductRegistry::ProductRegistry() :
       productList_(),
@@ -43,7 +34,6 @@ namespace edm {
 
   ProductRegistry::Transients::Transients() :
       frozen_(false),
-      constProductList_(),
       productProduced_(),
       anyProductProduced_(false),
       eventProductLookup_(new ProductHolderIndexHelper),
@@ -61,12 +51,14 @@ namespace edm {
   void
   ProductRegistry::Transients::reset() {
     frozen_ = false;
-    constProductList_.clear();
     for(bool& isProduced : productProduced_) isProduced = false;
     anyProductProduced_ = false;
-    eventProductLookup_.reset(new ProductHolderIndexHelper);
-    lumiProductLookup_.reset(new ProductHolderIndexHelper);
-    runProductLookup_.reset(new ProductHolderIndexHelper);
+
+    // propagate_const<T> has no reset() function
+    eventProductLookup_ = std::make_unique<ProductHolderIndexHelper>();
+    lumiProductLookup_ = std::make_unique<ProductHolderIndexHelper>();
+    runProductLookup_ = std::make_unique<ProductHolderIndexHelper>();
+
     eventNextIndexValue_ = 0;
     lumiNextIndexValue_ = 0;
     runNextIndexValue_ = 0;
@@ -86,7 +78,6 @@ namespace edm {
                               bool fromListener) {
     assert(productDesc.produced());
     throwIfFrozen();
-    checkDicts(productDesc);
     std::pair<ProductList::iterator, bool> ret =
          productList_.insert(std::make_pair(BranchKey(productDesc), productDesc));
     if(!ret.second) {
@@ -139,11 +130,18 @@ namespace edm {
     return false;
   }
 
-  std::shared_ptr<ProductHolderIndexHelper> const&
+  std::shared_ptr<ProductHolderIndexHelper const>
   ProductRegistry::productLookup(BranchType branchType) const {
-    if (branchType == InEvent) return transient_.eventProductLookup_;
-    if (branchType == InLumi) return transient_.lumiProductLookup_;
-    return transient_.runProductLookup_;
+    if (branchType == InEvent) return transient_.eventProductLookup();
+    if (branchType == InLumi) return transient_.lumiProductLookup();
+    return transient_.runProductLookup();
+  }
+
+  std::shared_ptr<ProductHolderIndexHelper>
+  ProductRegistry::productLookup(BranchType branchType) {
+    if (branchType == InEvent) return transient_.eventProductLookup();
+    if (branchType == InLumi) return transient_.lumiProductLookup();
+    return transient_.runProductLookup();
   }
 
   void
@@ -255,30 +253,18 @@ namespace edm {
         ++j;
       }
     }
-    updateConstProductRegistry();
     return differences.str();
   }
 
-  void ProductRegistry::updateConstProductRegistry() {
-    constProductList().clear();
-    for(auto const& product : productList_) {
-      auto const& key = product.first;
-      auto const& desc = product.second;
-      constProductList().insert(std::make_pair(key, BranchDescription(desc)));
-    }
-  }
-
   void ProductRegistry::initializeLookupTables() {
+
     std::map<TypeID, TypeID> containedTypeMap;
-    StringSet missingDicts;
+    TypeSet missingDicts;
+
     transient_.branchIDToIndex_.clear();
-    constProductList().clear();
 
     for(auto const& product : productList_) {
-      auto const& key = product.first;
       auto const& desc = product.second;
-
-      constProductList().insert(std::make_pair(key, BranchDescription(desc)));
 
       if(desc.produced()) {
         setProductProduced(desc.branchType());
@@ -286,8 +272,10 @@ namespace edm {
 
       //only do the following if the data is supposed to be available in the event
       if(desc.present()) {
-        if(!bool(desc.unwrappedType()) || !bool(desc.wrappedType())) {
-          missingDicts.insert(desc.className());
+        if(!bool(desc.unwrappedType())) {
+          missingDicts.insert(TypeID(desc.unwrappedType().typeInfo()));
+        } else if(!bool(desc.wrappedType())) {
+          missingDicts.insert(TypeID(desc.wrappedType().typeInfo()));
         } else {
           TypeID wrappedTypeID(desc.wrappedType().typeInfo());
           TypeID typeID(desc.unwrappedType().typeInfo());

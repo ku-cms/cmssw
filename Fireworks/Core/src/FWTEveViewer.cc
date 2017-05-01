@@ -20,9 +20,7 @@
 
 #include "TMath.h"
 #include "TGLIncludes.h"
-#define protected public
 #include "TGLFBO.h"
-#undef protected
 
 #include "Fireworks/Core/interface/FWTEveViewer.h"
 #include "Fireworks/Core/interface/FWTGLViewer.h"
@@ -49,7 +47,18 @@ FWTEveViewer::FWTEveViewer(const char* n, const char* t) :
 // }
 
 FWTEveViewer::~FWTEveViewer()
-{}
+{
+    if (m_thr) m_thr->detach();
+
+   {
+      std::unique_lock<std::mutex> lk(m_moo);
+
+      m_thr_exit = true;
+      m_cnd.notify_one();
+   }
+
+   delete m_thr;
+}
 
 //
 // assignment operators
@@ -63,9 +72,46 @@ FWTEveViewer::~FWTEveViewer()
 //   return *this;
 // }
 
+//==============================================================================
+
 //
 // member functions
 //
+
+void FWTEveViewer::spawn_image_thread()
+{
+   std::unique_lock<std::mutex> lko(m_moo);
+   
+   m_thr = new std::thread([=]() {
+         { std::unique_lock<std::mutex> lk(m_moo); m_cnd.notify_one(); }
+         while (true)
+         {
+            {
+               std::unique_lock<std::mutex> lk(m_moo);
+               m_cnd.wait(lk);
+
+               if (m_thr_exit)
+               {
+                  return;
+               }
+            }
+            if (m_name.EndsWith(".jpg"))
+            {
+               SaveJpg(m_name, &m_imgBuffer[0], m_ww, m_hh);
+            }
+            else
+            {
+               SavePng(m_name, &m_imgBuffer[0], m_ww, m_hh);
+            }
+
+            m_prom.set_value(0);
+         }
+      });
+
+   m_cnd.wait(lko);
+}
+
+//------------------------------------------------------------------------------
 
 FWTGLViewer* FWTEveViewer::SpawnFWTGLViewer()
 {
@@ -84,7 +130,8 @@ FWTGLViewer* FWTEveViewer::SpawnFWTGLViewer()
    return m_fwGlViewer;
 }
 
-std::thread FWTEveViewer::CaptureAndSaveImage(const TString& file, int height)
+std::future<int>
+FWTEveViewer::CaptureAndSaveImage(const TString& file, int height)
 {
    static const TString eh("FWTEveViewer::CaptureAndSaveImage");
 
@@ -97,44 +144,48 @@ std::thread FWTEveViewer::CaptureAndSaveImage(const TString& file, int height)
    if (fbo == 0)
    {
       ::Error(eh, "Returned FBO is 0.");
-      return std::thread();
+      m_prom = std::promise<int>();
+      m_prom.set_value(-1);
+      return m_prom.get_future();
    }
 
    int ww, hh;
-   if (fbo->fIsRescaled)
+   if (fbo->GetIsRescaled())
    {
-      ww = TMath::Nint(fbo->fW * fbo->fWScale);
-      hh = TMath::Nint(fbo->fH * fbo->fHScale);
+      ww = TMath::Nint(fbo->GetW() * fbo->GetWScale());
+      hh = TMath::Nint(fbo->GetH() * fbo->GetHScale());
    }
    else
    {
-      ww = fbo->fW;
-      hh = fbo->fH;
+      ww = fbo->GetW();
+      hh = fbo->GetH();
    }
 
    fbo->SetAsReadBuffer();
 
-   UChar_t* xx = new UChar_t[3 * ww * hh];
-   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-   glReadPixels(0, 0, ww, hh, GL_RGB, GL_UNSIGNED_BYTE, xx);
-
-   delete fbo;
-
-   std::thread thr([=]()
+   size_t bufsize = 3 * ww * hh;
+   if (bufsize != m_imgBuffer.size())
    {
-      if (file.EndsWith(".jpg"))
-      {
-         SaveJpg(file, xx, ww, hh);
-      }
-      else
-      {
-         SavePng(file, xx, ww, hh);
-      }
+      m_imgBuffer.resize(bufsize);
+   }
 
-      delete [] xx;
-   });
+   glPixelStorei(GL_PACK_ALIGNMENT, 1);
+   glReadPixels(0, 0, ww, hh, GL_RGB, GL_UNSIGNED_BYTE, &m_imgBuffer[0]);
 
-   return thr;
+   if (m_thr == 0) spawn_image_thread();
+
+   {
+      std::unique_lock<std::mutex> lk(m_moo);
+
+      m_prom = std::promise<int>();
+      m_name = file;
+      m_ww   = ww;
+      m_hh   = hh;
+
+      m_cnd.notify_one();
+   }
+
+   return m_prom.get_future();
 }
 
 //

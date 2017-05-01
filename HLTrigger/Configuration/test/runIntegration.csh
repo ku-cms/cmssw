@@ -8,17 +8,19 @@ date +%F\ %a\ %T
 echo Start $0 $1 $2
 
 if ( $2 == "" ) then
-  set tables = ( GRun 50nsGRun )
+  set tables = ( GRun )
 else if ( $2 == ALL ) then
-  set tables = ( Fake GRun HIon PIon 50nsGRun )
+  set tables = ( GRun HIon PIon PRef 25ns10e33_v2 Fake Fake1 )
+else if ( $2 == IB ) then
+  set tables = ( GRun HIon PIon PRef )
 else if ( $2 == DEV ) then
-  set tables = ( GRun HIon PIon 50nsGRun )
+  set tables = ( GRun HIon PIon PRef )
 else if ( $2 == FULL ) then
   set tables = ( FULL )
 else if ( $2 == FAKE ) then
-  set tables = ( Fake )
+  set tables = ( Fake Fake1 )
 else if ( $2 == FROZEN ) then
-  set tables = ( Fake )
+  set tables = ( Fake Fake1 )
 else
   set tables = ( $2 )
 endif
@@ -26,11 +28,9 @@ endif
 foreach gtag ( $1 )
 
   if ( $gtag == DATA ) then
-    set basepy = OnData
     set flags  = ""
     set infix  = hlt
   else
-    set basepy = OnMc
     set flags  = --mc
     set infix  = mc
   endif
@@ -42,10 +42,10 @@ foreach gtag ( $1 )
     touch  ${name}
     rm -rf ${name}*
 
-    set config = `grep tableName ${basepy}_HLT_${table}.py | cut -f2 -d "'"`
+    set config = `grep tableName OnLine_HLT_${table}.py | cut -f2 -d "'"`
     if ($table == Fake) then
       set basegt = auto:run1_${infix}_${table}
-    else
+    else 
       set basegt = auto:run2_${infix}_${table}
     endif
     set autogt = "--globaltag=${basegt}"

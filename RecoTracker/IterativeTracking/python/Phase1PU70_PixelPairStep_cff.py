@@ -52,6 +52,8 @@ pixelPairStepSeeds.SeedComparitorPSet = cms.PSet(
     )
 pixelPairStepSeeds.ClusterCheckPSet.doClusterCheck = cms.bool(False)
 pixelPairStepSeeds.OrderedHitsFactoryPSet.maxElement =  cms.uint32(0)
+pixelPairStepSeeds.SeedCreatorPSet.magneticField = ''
+pixelPairStepSeeds.SeedCreatorPSet.propagator = 'PropagatorWithMaterial'
 
 # QUALITY CUTS DURING TRACK BUILDING
 import TrackingTools.TrajectoryFiltering.TrajectoryFilter_cff
@@ -62,8 +64,8 @@ pixelPairStepTrajectoryFilter = TrackingTools.TrajectoryFiltering.TrajectoryFilt
     minPt = 0.1
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-pixelPairStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+pixelPairStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
     ComponentName = cms.string('pixelPairStepChi2Est'),
     nSigma = cms.double(3.0),
     MaxChi2 = cms.double(16.0)
@@ -105,7 +107,7 @@ pixelPairStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.
     AlgorithmName = cms.string('pixelPairStep'),
     src = 'pixelPairStepTrackCandidates',
     Fitter = cms.string('FlexibleKFFittingSmoother'),
-    TTRHBuilder=cms.string('WithTrackAngle'), minGoodCharge = cms.double(2069)
+    TTRHBuilder=cms.string('WithTrackAngle')
     )
 
 # Final selection

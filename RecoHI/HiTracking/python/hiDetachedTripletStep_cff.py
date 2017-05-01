@@ -42,6 +42,8 @@ hiDetachedTripletStepPixelTracks = cms.EDProducer("PixelTrackProducer",
         ComponentName = cms.string('GlobalTrackingRegionWithVerticesProducer'),
         RegionPSet = cms.PSet(
             precise = cms.bool(True),
+            useMultipleScattering = cms.bool(False),
+            useFakeVertices       = cms.bool(False),            
             beamSpot = cms.InputTag("offlineBeamSpot"),
             useFixedError = cms.bool(True),
             nSigmaZ = cms.double(4.0),
@@ -113,8 +115,8 @@ hiDetachedTripletStepTrajectoryFilter = TrackingTools.TrajectoryFiltering.Trajec
     constantValueForLostHitsFractionFilter = cms.double(0.701)
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-hiDetachedTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+hiDetachedTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
         ComponentName = cms.string('hiDetachedTripletStepChi2Est'),
             nSigma = cms.double(3.0),
             MaxChi2 = cms.double(9.0)
@@ -160,20 +162,28 @@ hiDetachedTripletStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackP
 import RecoHI.HiTracking.hiMultiTrackSelector_cfi
 hiDetachedTripletStepSelector = RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiMultiTrackSelector.clone(
     src='hiDetachedTripletStepTracks',
+    useAnyMVA = cms.bool(True),
+    GBRForestLabel = cms.string('HIMVASelectorIter7'),
+    GBRForestVars = cms.vstring(['chi2perdofperlayer', 'nhits', 'nlayers', 'eta']),
     trackSelectors= cms.VPSet(
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiLooseMTS.clone(
     name = 'hiDetachedTripletStepLoose',
-    applyAdaptedPVCuts = cms.bool(False)
+    applyAdaptedPVCuts = cms.bool(False),
+    useMVA = cms.bool(False),
     ), #end of pset
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiTightMTS.clone(
     name = 'hiDetachedTripletStepTight',
     preFilterName = 'hiDetachedTripletStepLoose',
-    applyAdaptedPVCuts = cms.bool(False)
+    applyAdaptedPVCuts = cms.bool(False),
+    useMVA = cms.bool(True),
+    minMVA = cms.double(-0.2)
     ),
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiHighpurityMTS.clone(
     name = 'hiDetachedTripletStep',
     preFilterName = 'hiDetachedTripletStepTight',
-    applyAdaptedPVCuts = cms.bool(False)
+    applyAdaptedPVCuts = cms.bool(False),
+    useMVA = cms.bool(True),
+    minMVA = cms.double(-0.09)
     ),
     ) #end of vpset
     ) #end of clone

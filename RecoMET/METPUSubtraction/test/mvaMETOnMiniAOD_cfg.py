@@ -23,7 +23,7 @@ process.maxEvents = cms.untracked.PSet(
 # Input source
 process.source = cms.Source("PoolSource",
     secondaryFileNames = cms.untracked.vstring(),
-    fileNames = cms.untracked.vstring('root://eoscms//eos/cms/store/relval/CMSSW_7_2_1/RelValZEE_13/MINIAODSIM/PU25ns_PHYS14_25_V1_Phys14-v1/00000/C6B792AB-D15E-E411-A787-02163E00F4FB.root'),
+    fileNames = cms.untracked.vstring('/store/mc/RunIIFall15MiniAODv2/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/70000/DC327D28-D3B8-E511-9FB7-008CFA0A59C0.root '),
                             skipEvents = cms.untracked.uint32(0)         
 )
 
@@ -58,6 +58,7 @@ process.MINIAODSIMoutput = cms.OutputModule("PoolOutputModule",
 
 process.load("RecoJets.JetProducers.ak4PFJets_cfi")
 process.ak4PFJets.src = cms.InputTag("packedPFCandidates")
+process.ak4PFJets.doAreaFastjet = cms.bool(True)
 
 from JetMETCorrections.Configuration.DefaultJEC_cff import ak4PFJetsL1FastL2L3
 

@@ -13,16 +13,13 @@ TrackerCollisionTrackMon.ClusterLabels          = cms.vstring('Tot','Strip','Pix
 TrackerCollisionTrackMon.beamSpot               = cms.InputTag("offlineBeamSpot")
 TrackerCollisionTrackMon.primaryVertex          = cms.InputTag('offlinePrimaryVertices')
 TrackerCollisionTrackMon.primaryVertexInputTags = cms.VInputTag(
-      cms.InputTag('offlinePrimaryVertices'),
-      cms.InputTag('pixelVertices')
+      cms.InputTag('offlinePrimaryVertices')
 )    
 TrackerCollisionTrackMon.selPrimaryVertexInputTags = cms.VInputTag(
-      cms.InputTag('goodOfflinePrimaryVertices'),
-      cms.InputTag('')
+      cms.InputTag('goodOfflinePrimaryVertices')
 )    
 TrackerCollisionTrackMon.pvLabels               = cms.vstring(
-      'offline',
-      'pixel'
+      'offline'
 )
 
 # output parameters
@@ -47,9 +44,11 @@ TrackerCollisionTrackMon.doRecHitVsPhiVsEtaPerTrack          = cms.bool(True)
 TrackerCollisionTrackMon.doGoodTrackRecHitVsPhiVsEtaPerTrack = cms.bool(True)
 TrackerCollisionTrackMon.doLayersVsPhiVsEtaPerTrack          = cms.bool(True)
 TrackerCollisionTrackMon.doGoodTrackLayersVsPhiVsEtaPerTrack = cms.bool(True)
-#TrackerCollisionTrackMon.doPUmonitoring                      = cms.bool(True)
-#TrackerCollisionTrackMon.doPlotsVsBXlumi                     = cms.bool(True)
-#TrackerCollisionTrackMon.doPlotsVsGoodPVtx                   = cms.bool(True)
+TrackerCollisionTrackMon.doPUmonitoring                      = cms.bool(False)
+TrackerCollisionTrackMon.doPlotsVsBXlumi                     = cms.bool(False)
+TrackerCollisionTrackMon.doPlotsVsGoodPVtx                   = cms.bool(True)
+TrackerCollisionTrackMon.doEffFromHitPatternVsPU             = cms.bool(True)
+TrackerCollisionTrackMon.doEffFromHitPatternVsBX             = cms.bool(True)
 
 # LS analysis
 TrackerCollisionTrackMon.doLumiAnalysis       = cms.bool(True)     

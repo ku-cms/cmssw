@@ -47,6 +47,20 @@ Jet::Jet(const edm::RefToBase<reco::Jet> & aJetRef) :
   tryImportSpecific(*aJetRef);
 }
 
+/// constructure from ref to pat::Jet
+Jet::Jet(const edm::RefToBase<pat::Jet> & aJetRef) :
+  Jet(*aJetRef)
+{
+  refToOrig_ = edm::Ptr<reco::Candidate>(aJetRef.id(), aJetRef.get(), aJetRef.key());
+}
+
+/// constructure from ref to pat::Jet
+Jet::Jet(const edm::Ptr<pat::Jet> & aJetRef) :
+  Jet(*aJetRef)
+{
+  refToOrig_ = aJetRef;
+}
+
 std::ostream& 
 reco::operator<<(std::ostream& out, const pat::Jet& obj) 
 {
@@ -338,23 +352,24 @@ const std::vector<std::pair<std::string, float> > & Jet::getPairDiscri() const {
 /// get b discriminant from label name
 float Jet::bDiscriminator(const std::string & aLabel) const {
   float discriminator = -1000.;
-  const std::string & theLabel = ((aLabel == "" || aLabel == "default")) ? "trackCountingHighEffBJetTags" : aLabel;
-  for(unsigned int i=0; i!=pairDiscriVector_.size(); i++){
-    if(pairDiscriVector_[i].first == theLabel){
+  for(int i=(int(pairDiscriVector_.size())-1); i>=0; i--){
+    if(pairDiscriVector_[i].first == aLabel){
       discriminator = pairDiscriVector_[i].second;
+      break;
     }
   }
   return discriminator;
 }
 
 const reco::BaseTagInfo * Jet::tagInfo(const std::string &label) const {
-    std::vector<std::string>::const_iterator it = std::find(tagInfoLabels_.begin(), tagInfoLabels_.end(), label);
-    if (it != tagInfoLabels_.end()) {
-      if ( tagInfosFwdPtr_.size() > 0 ) return tagInfosFwdPtr_[it - tagInfoLabels_.begin()].get();
-      else if ( tagInfos_.size() > 0 )  return & tagInfos_[it - tagInfoLabels_.begin()];
+  for(int i=(int(tagInfoLabels_.size())-1); i>=0; i--){
+    if (tagInfoLabels_[i] == label) {
+      if ( tagInfosFwdPtr_.size() > 0 ) return tagInfosFwdPtr_[i].get();
+      else if ( tagInfos_.size() > 0 )  return & tagInfos_[i];
       return 0;
     }
-    return 0;
+  }
+  return 0;
 }
 
 
@@ -563,4 +578,35 @@ void Jet::cachePFCandidates() const {
   }
   // Set the cache
   pfCandidatesTemp_.set(std::move(pfCandidatesTemp));
+}
+
+
+
+
+/// Access to subjet list
+pat::JetPtrCollection const & Jet::subjets( unsigned int index) const { 
+  if ( index < subjetCollections_.size() ) 
+    return subjetCollections_[index]; 
+  else {
+    throw cms::Exception("OutOfRange") << "Index " << index << " is out of range" << std::endl;
+  }
+}
+
+
+/// String access to subjet list
+pat::JetPtrCollection const & Jet::subjets( std::string label ) const { 
+  auto found = find( subjetLabels_.begin(), subjetLabels_.end(), label );
+  if ( found != subjetLabels_.end() ){
+    auto index = std::distance( subjetLabels_.begin(), found );
+    return subjetCollections_[index]; 
+  }
+  else {
+    throw cms::Exception("SubjetsNotFound") << "Label " << label << " does not match any subjet collection" << std::endl;
+  }
+}
+
+/// Add new set of subjets
+void Jet::addSubjets( pat::JetPtrCollection const & pieces, std::string label  ) {
+  subjetCollections_.push_back( pieces );
+  subjetLabels_.push_back( label );
 }

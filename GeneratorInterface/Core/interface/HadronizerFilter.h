@@ -28,6 +28,7 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Utilities/interface/TypeID.h"
 #include "DataFormats/Provenance/interface/BranchDescription.h"
+#include "CLHEP/Random/RandomEngine.h"
 
 // #include "GeneratorInterface/ExternalDecays/interface/ExternalDecayDriver.h"
 
@@ -44,6 +45,7 @@
 
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenRunInfoProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenLumiInfoHeader.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenLumiInfoProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 
@@ -51,6 +53,7 @@
 namespace edm
 {
   template <class HAD, class DEC> class HadronizerFilter : public one::EDFilter<EndRunProducer,
+                                                                                BeginLuminosityBlockProducer,
 										EndLuminosityBlockProducer,
                                                                                 one::WatchRuns,
                                                                                 one::WatchLuminosityBlocks,
@@ -71,6 +74,7 @@ namespace edm
     virtual void endRun(Run const&, EventSetup const&) override;
     virtual void endRunProduce(Run &, EventSetup const&) override;
     virtual void beginLuminosityBlock(LuminosityBlock const&, EventSetup const&) override;
+    virtual void beginLuminosityBlockProduce(LuminosityBlock&, EventSetup const&) override;
     virtual void endLuminosityBlock(LuminosityBlock const&, EventSetup const&) override;
     virtual void endLuminosityBlockProduce(LuminosityBlock &, EventSetup const&) override;
 
@@ -79,6 +83,7 @@ namespace edm
     // gen::ExternalDecayDriver* decayer_;
     Decayer* decayer_;
     HepMCFilterDriver *filter_;
+    InputTag runInfoProductTag_;
     EDGetTokenT<LHERunInfoProduct> runInfoProductToken_;
     EDGetTokenT<LHEEventProduct> eventProductToken_;
     unsigned int counterRunInfoProducts_;
@@ -95,6 +100,7 @@ namespace edm
     hadronizer_(ps),
     decayer_(0),
     filter_(0),
+    runInfoProductTag_(),
     runInfoProductToken_(),
     eventProductToken_(),
     counterRunInfoProducts_(0),
@@ -106,6 +112,7 @@ namespace edm
           iBD.branchType() == InRun) {
         ++(this->counterRunInfoProducts_);
         this->eventProductToken_ = consumes<LHEEventProduct>(InputTag((iBD.moduleLabel()=="externalLHEProducer") ? "externalLHEProducer" : "source"));
+        this->runInfoProductTag_ = InputTag(iBD.moduleLabel(), iBD.productInstanceName(), iBD.processName());
         this->runInfoProductToken_ = consumes<LHERunInfoProduct,InRun>(InputTag(iBD.moduleLabel(), iBD.productInstanceName(), iBD.processName()));
       }
     });
@@ -152,8 +159,9 @@ namespace edm
       usesResource(edm::uniqueSharedResourceName());
     }
 
-    produces<edm::HepMCProduct>();
+    produces<edm::HepMCProduct>("unsmeared");
     produces<GenEventInfoProduct>();
+    produces<GenLumiInfoHeader, edm::InLumi>();
     produces<GenLumiInfoProduct, edm::InLumi>();
     produces<GenRunInfoProduct, edm::InRun>();
     if(filter_)
@@ -266,12 +274,11 @@ namespace edm
       finalEvent->weights()[0] *= multihadweight;
     }
     
-    
     ev.put(finalGenEventInfo);
 
     std::auto_ptr<HepMCProduct> bare_product(new HepMCProduct());
     bare_product->addHepMCData( finalEvent.release() );
-    ev.put(bare_product);
+    ev.put(bare_product, "unsmeared");
 
     return true;
   }
@@ -294,7 +301,10 @@ namespace edm
         << "No LHERunInfoProduct present";
 
     edm::Handle<LHERunInfoProduct> lheRunInfoProduct;
-    run.getByToken(runInfoProductToken_, lheRunInfoProduct);
+    run.getByLabel(runInfoProductTag_, lheRunInfoProduct);
+    //TODO: fix so that this actually works with getByToken commented below...
+    //run.getByToken(runInfoProductToken_, lheRunInfoProduct);
+    
     hadronizer_.setLHERunInfo( new lhef::LHERunInfo(*lheRunInfoProduct) );
     lhef::LHERunInfo* lheRunInfo = hadronizer_.getLHERunInfo().get();
     lheRunInfo->initLumi();
@@ -335,13 +345,20 @@ namespace edm
   template <class HAD, class DEC>
   void
   HadronizerFilter<HAD,DEC>::beginLuminosityBlock(LuminosityBlock const& lumi, EventSetup const& es)
+  {}
+  
+  template <class HAD, class DEC>
+  void
+  HadronizerFilter<HAD,DEC>::beginLuminosityBlockProduce(LuminosityBlock &lumi, EventSetup const& es)
   {
     lhef::LHERunInfo* lheRunInfo = hadronizer_.getLHERunInfo().get();
     lheRunInfo->initLumi();
 
     RandomEngineSentry<HAD> randomEngineSentry(&hadronizer_, lumi.index());
     RandomEngineSentry<DEC> randomEngineSentryDecay(decayer_, lumi.index());
-
+    
+    hadronizer_.randomizeIndex(lumi,randomEngineSentry.randomEngine());
+    
     if ( !hadronizer_.readSettings(1) )
        throw edm::Exception(errors::Configuration) 
 	 << "Failed to read settings for the hadronizer "
@@ -371,6 +388,10 @@ namespace edm
 	<< "Failed to initialize hadronizer "
 	<< hadronizer_.classname()
 	<< " for external parton generation\n";
+        
+    std::auto_ptr<GenLumiInfoHeader> genLumiInfoHeader(hadronizer_.getGenLumiInfoHeader());
+    lumi.put(genLumiInfoHeader);
+        
   }
 
   template <class HAD, class DEC>
@@ -407,6 +428,7 @@ namespace edm
     std::auto_ptr<GenLumiInfoProduct> genLumiInfo(new GenLumiInfoProduct());
     genLumiInfo->setHEPIDWTUP(lheRunInfo->getHEPRUP()->IDWTUP);
     genLumiInfo->setProcessInfo( GenLumiProcess );
+
     lumi.put(genLumiInfo);
 
 

@@ -28,7 +28,6 @@ Test program for edm::Event.
 #include "FWCore/Framework/interface/RunPrincipal.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/RootAutoLibraryLoader/interface/RootAutoLibraryLoader.h"
 #include "FWCore/ServiceRegistry/interface/ModuleCallingContext.h"
 #include "FWCore/Utilities/interface/Algorithms.h"
 #include "FWCore/Utilities/interface/EDMException.h"
@@ -42,8 +41,6 @@ Test program for edm::Event.
 #include "Utilities/Testing/interface/CppUnit_testdriver.icpp"
 
 #include "cppunit/extensions/HelperMacros.h"
-
-#include "Cintex/Cintex.h"
 
 #include <algorithm>
 #include <fstream>
@@ -244,8 +241,6 @@ testEvent::testEvent() :
   processHistoryRegistry_(),
   processConfigurations_() {
 
-  ROOT::Cintex::Cintex::Enable();
-
   typedef edmtest::IntProduct prod_t;
   typedef std::vector<edmtest::Thing> vec_t;
 
@@ -305,7 +300,6 @@ testEvent::~testEvent() {
 
 void testEvent::setUp() {
 
-  edm::RootAutoLibraryLoader::enable();
   // First build a fake process history, that says there
   // were previous processes named "EARLY" and "LATE".
   // This takes several lines of code but other than
@@ -521,7 +515,6 @@ void testEvent::getByLabel() {
   typedef edmtest::IntProduct product_t;
   typedef std::unique_ptr<product_t> ap_t;
   typedef Handle<product_t> handle_t;
-  typedef std::vector<handle_t> handle_vec;
 
   ap_t one(new product_t(1));
   ap_t two(new product_t(2));
@@ -593,10 +586,10 @@ void testEvent::getByLabel() {
 
   }
 
-  BasicHandle bh = principal_->getByLabel(PRODUCT_TYPE, TypeID(typeid(edmtest::IntProduct)), "modMulti", "int1", "LATE",nullptr, nullptr);
+  BasicHandle bh = principal_->getByLabel(PRODUCT_TYPE, TypeID(typeid(edmtest::IntProduct)), "modMulti", "int1", "LATE",nullptr, nullptr, nullptr);
   convert_handle(std::move(bh), h);
   CPPUNIT_ASSERT(h->value == 100);
-  BasicHandle bh2(principal_->getByLabel(PRODUCT_TYPE, TypeID(typeid(edmtest::IntProduct)), "modMulti", "int1", "nomatch",nullptr, nullptr));
+  BasicHandle bh2(principal_->getByLabel(PRODUCT_TYPE, TypeID(typeid(edmtest::IntProduct)), "modMulti", "int1", "nomatch",nullptr, nullptr, nullptr));
   CPPUNIT_ASSERT(!bh2.isValid());
 
   std::shared_ptr<Wrapper<edmtest::IntProduct> const> ptr = getProductByTag<edmtest::IntProduct>(*principal_, inputTag, nullptr);
@@ -607,7 +600,6 @@ void testEvent::getByToken() {
   typedef edmtest::IntProduct product_t;
   typedef std::unique_ptr<product_t> ap_t;
   typedef Handle<product_t> handle_t;
-  typedef std::vector<handle_t> handle_vec;
   
   ap_t one(new product_t(1));
   ap_t two(new product_t(2));
@@ -733,7 +725,6 @@ void testEvent::deleteProduct() {
   
   typedef edmtest::IntProduct product_t;
   typedef std::unique_ptr<product_t> ap_t;
-  typedef Handle<product_t> handle_t;
   
   ap_t one(new product_t(1));
   addProduct(std::move(one),   "int1_tag", "int1");

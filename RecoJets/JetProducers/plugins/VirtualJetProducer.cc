@@ -61,7 +61,7 @@ namespace reco {
 }                                                                                        
 
 //______________________________________________________________________________
-const char *VirtualJetProducer::JetType::names[] = {
+const char *const VirtualJetProducer::JetType::names[] = {
   "BasicJet","GenJet","CaloJet","PFJet","TrackJet","PFClusterJet"
 };
 
@@ -70,7 +70,7 @@ const char *VirtualJetProducer::JetType::names[] = {
 VirtualJetProducer::JetType::Type
 VirtualJetProducer::JetType::byName(const string &name)
 {
-  const char **pos = std::find(names, names + LastJetType, name);
+  const char *const *pos = std::find(names, names + LastJetType, name);
   if (pos == names + LastJetType) {
     std::string errorMessage="Requested jetType not supported: "+name+"\n";
     throw cms::Exception("Configuration",errorMessage);
@@ -345,12 +345,20 @@ void VirtualJetProducer::produce(edm::Event& iEvent,const edm::EventSetup& iSetu
   
   bool isView = iEvent.getByToken(input_candidateview_token_, inputsHandle);
   if ( isView ) {
+    if ( inputsHandle->size() == 0) {
+      output( iEvent, iSetup );
+      return;
+    }
     for (size_t i = 0; i < inputsHandle->size(); ++i) {
       inputs_.push_back(inputsHandle->ptrAt(i));
     }
   } else {
     bool isPF = iEvent.getByToken(input_candidatefwdptr_token_, pfinputsHandleAsFwdPtr);
     if ( isPF ) {
+      if ( pfinputsHandleAsFwdPtr->size() == 0) {
+	output( iEvent, iSetup );
+	return;
+      }
       for (size_t i = 0; i < pfinputsHandleAsFwdPtr->size(); ++i) {
 	if ( (*pfinputsHandleAsFwdPtr)[i].ptr().isAvailable() ) {
 	  inputs_.push_back( (*pfinputsHandleAsFwdPtr)[i].ptr() );
@@ -361,6 +369,10 @@ void VirtualJetProducer::produce(edm::Event& iEvent,const edm::EventSetup& iSetu
       }
     } else {
       iEvent.getByToken(input_packedcandidatefwdptr_token_, packedinputsHandleAsFwdPtr);
+      if ( packedinputsHandleAsFwdPtr->size() == 0) {
+	output( iEvent, iSetup );
+	return;
+      }
       for (size_t i = 0; i < packedinputsHandleAsFwdPtr->size(); ++i) {
 	if ( (*packedinputsHandleAsFwdPtr)[i].ptr().isAvailable() ) {
 	  inputs_.push_back( (*packedinputsHandleAsFwdPtr)[i].ptr() );
@@ -418,6 +430,13 @@ void VirtualJetProducer::produce(edm::Event& iEvent,const edm::EventSetup& iSetu
   output( iEvent, iSetup );
   LogDebug("VirtualJetProducer") << "Wrote jets\n";
   
+  // Clear the work vectors so that memory is free for other modules.
+  // Use the trick of swapping with an empty vector so that the memory
+  // is actually given back rather than silently kept.
+  decltype(fjInputs_)().swap(fjInputs_);
+  decltype(fjJets_)().swap(fjJets_);
+  decltype(inputs_)().swap(inputs_);  
+
   return;
 }
 
@@ -599,16 +618,21 @@ void VirtualJetProducer::writeJets( edm::Event & iEvent, edm::EventSetup const& 
       fastjet::ClusterSequenceAreaBase const* clusterSequenceWithArea =
         dynamic_cast<fastjet::ClusterSequenceAreaBase const *> ( &*fjClusterSeq_ );
 
-      
-      for(int ie = 0; ie < nEta; ++ie){
-        double eta = puCenters_[ie];
-        double etamin=eta-puWidth_;
-        double etamax=eta+puWidth_;
-        fastjet::RangeDefinition range_rho(etamin,etamax);
-        fastjet::BackgroundEstimator bkgestim(*clusterSequenceWithArea,range_rho);
-        bkgestim.set_excluded_jets(fjexcluded_jets);
-        rhos->push_back(bkgestim.rho());
-        sigmas->push_back(bkgestim.sigma());
+      if (clusterSequenceWithArea ==nullptr ){
+	if (fjJets_.size() > 0) {
+	  throw cms::Exception("LogicError")<<"fjClusterSeq is not initialized while inputs are present\n ";
+	}
+      } else {
+	for(int ie = 0; ie < nEta; ++ie){
+	  double eta = puCenters_[ie];
+	  double etamin=eta-puWidth_;
+	  double etamax=eta+puWidth_;
+	  fastjet::RangeDefinition range_rho(etamin,etamax);
+	  fastjet::BackgroundEstimator bkgestim(*clusterSequenceWithArea,range_rho);
+	  bkgestim.set_excluded_jets(fjexcluded_jets);
+	  rhos->push_back(bkgestim.rho());
+	  sigmas->push_back(bkgestim.sigma());
+	}
       }
       iEvent.put(rhos,"rhos");
       iEvent.put(sigmas,"sigmas");
@@ -625,11 +649,17 @@ void VirtualJetProducer::writeJets( edm::Event & iEvent, edm::EventSetup const& 
 	edm::LogWarning("StrangeNEmtpyJets") << "n_empty_jets is : " << clusterSequenceWithArea->n_empty_jets(*fjRangeDef_) << " with range " << fjRangeDef_->description() << ".";
 	}
       */
-      clusterSequenceWithArea->get_median_rho_and_sigma(*fjRangeDef_,false,*rho,*sigma,mean_area);
-      if((*rho < 0)|| (edm::isNotFinite(*rho))) {
-	edm::LogError("BadRho") << "rho value is " << *rho << " area:" << mean_area << " and n_empty_jets: " << clusterSequenceWithArea->n_empty_jets(*fjRangeDef_) << " with range " << fjRangeDef_->description()
-				<<". Setting rho to rezo.";
-	*rho = 0;
+      if (clusterSequenceWithArea ==nullptr ){
+	if (fjJets_.size() > 0) {
+	  throw cms::Exception("LogicError")<<"fjClusterSeq is not initialized while inputs are present\n ";
+	}
+      } else {
+	clusterSequenceWithArea->get_median_rho_and_sigma(*fjRangeDef_,false,*rho,*sigma,mean_area);
+	if((*rho < 0)|| (edm::isNotFinite(*rho))) {
+	  edm::LogError("BadRho") << "rho value is " << *rho << " area:" << mean_area << " and n_empty_jets: " << clusterSequenceWithArea->n_empty_jets(*fjRangeDef_) << " with range " << fjRangeDef_->description()
+				  <<". Setting rho to rezo.";
+	  *rho = 0;
+	}
       }
       iEvent.put(rho,"rho");
       iEvent.put(sigma,"sigma");

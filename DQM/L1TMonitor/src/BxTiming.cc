@@ -56,10 +56,6 @@ BxTiming::bookHistograms(DQMStore::IBooker &ibooker, edm::Run const&, edm::Event
 {
   ibooker.setCurrentFolder(histFolder_);
 
-  runId_=ibooker.bookInt("iRun");
-  runId_->Fill(-1);
-  runStartTimeStamp_=ibooker.bookFloat("eventTimeStamp");
-
   /// initialize counters  
   for(int i=0; i<nfed_;i++) {
     nBxDiff[i][0]=0; nBxDiff[i][1]=nbig_; nBxDiff[i][2]=-1*nbig_;
@@ -222,7 +218,7 @@ BxTiming::bookHistograms(DQMStore::IBooker &ibooker, edm::Run const&, edm::Event
 
 void
 BxTiming::dqmBeginRun(edm::Run const& r, edm::EventSetup const& iSetup) {
-  //runId_->Fill(r.id().run());
+
 }
 
 // ------------ method called to for each event  ------------
@@ -279,7 +275,7 @@ BxTiming::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   // triggerType
   // trigger types: physics (1), calibration (2), random (3), traced physics (5),  test (6) 
-  int ttype = FEDHeader(rawdata->FEDData(812).data()).triggerType();
+  int ttype = static_cast<double> (iEvent.eventAuxiliary().experimentType());
 
   // loop over feds
   for (int i = 0; i<FEDNumbering::MAXFEDID+1; i++){

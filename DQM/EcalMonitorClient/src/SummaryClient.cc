@@ -54,8 +54,6 @@ namespace ecaldqm
   void
   SummaryClient::producePlots(ProcessType _pType)
   {
-    if(_pType == kLumi && !onlineMode_) return;
-    // TODO: Implement offline per-lumi summary
 
     MESet& meReportSummaryContents(MEs_.at("ReportSummaryContents"));
     MESet& meReportSummary(MEs_.at("ReportSummary"));
@@ -80,7 +78,7 @@ namespace ecaldqm
     MESet& meQualitySummary(MEs_.at("QualitySummary"));
     MESet& meReportSummaryMap(MEs_.at("ReportSummaryMap"));
 
-    MESet const& sIntegrity(sources_.at("Integrity"));
+    MESet const* sIntegrity(using_("Integrity") ? &sources_.at("Integrity") : 0);
     MESet const& sRawData(sources_.at("RawData"));
     MESet const* sPresample(using_("Presample") ? &sources_.at("Presample") : 0);
     MESet const* sTiming(using_("Timing") ? &sources_.at("Timing") : 0);
@@ -97,20 +95,26 @@ namespace ecaldqm
 
     std::map<uint32_t, int> badChannelsCount;
 
+    // Override IntegrityByLumi check if Desync errors present
+    MESet const& sBXSRP(sources_.at("BXSRP"));
+    MESet const& sBXTCC(sources_.at("BXTCC"));
+    std::vector<bool> hasMismatchDCC(nDCC,false);
+    for ( unsigned iDCC(0); iDCC < nDCC; ++iDCC ) {
+      if ( sBXSRP.getBinContent(iDCC + 1) > 50. || sBXTCC.getBinContent(iDCC + 1) > 50. ) // "any" => 50
+        hasMismatchDCC[iDCC] = true;
+    }
+
     MESet::iterator qEnd(meQualitySummary.end());
-    MESet::const_iterator iItr(sIntegrity);
     for(MESet::iterator qItr(meQualitySummary.beginChannel()); qItr != qEnd; qItr.toNextChannel()){
 
       DetId id(qItr->getId());
       unsigned iDCC(dccId(id) - 1);
 
-      iItr = qItr;
-
-      int integrity(iItr->getBinContent());
+      int integrity(sIntegrity ? sIntegrity->getBinContent(id) : kUnknown);
 
       if(integrity == kUnknown || integrity == kMUnknown){
         qItr->setBinContent(integrity);
-        continue;
+        if ( onlineMode_ ) continue;
       }
 
       int presample(sPresample ? sPresample->getBinContent(id) : kUnknown);
@@ -120,11 +124,13 @@ namespace ecaldqm
 
       int rawdata(sRawData.getBinContent(id));
 
-      if(integrity == kBad && integrityByLumi[iDCC] == 0.) integrity = kGood;
+      //if(integrity == kBad && integrityByLumi[iDCC] == 0.) integrity = kGood;
+      if(integrity == kBad && integrityByLumi[iDCC] == 0. && !hasMismatchDCC[iDCC]) integrity = kGood;
       if(rawdata == kBad && rawDataByLumi[iDCC] == 0.) rawdata = kGood;
 
       int status(kGood);
-      if(integrity == kBad || presample == kBad || timing == kBad || rawdata == kBad || trigprim == kBad || hotcell == kBad)
+      //if(integrity == kBad || presample == kBad || timing == kBad || rawdata == kBad || trigprim == kBad || hotcell == kBad)
+      if(integrity == kBad || timing == kBad || rawdata == kBad || trigprim == kBad || hotcell == kBad)
         status = kBad;
       else if(integrity == kUnknown && presample == kUnknown && timing == kUnknown && rawdata == kUnknown && trigprim == kUnknown)
         status = kUnknown;
@@ -225,6 +231,3 @@ namespace ecaldqm
 
   DEFINE_ECALDQM_WORKER(SummaryClient);
 }
-
-
-

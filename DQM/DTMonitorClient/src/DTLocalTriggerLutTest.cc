@@ -37,7 +37,7 @@ using namespace std;
 DTLocalTriggerLutTest::DTLocalTriggerLutTest(const edm::ParameterSet& ps){
 
   setConfig(ps,"DTLocalTriggerLut");
-  baseFolderDCC = "DT/03-LocalTrigger-DCC/";
+  baseFolderTM = "DT/03-LocalTrigger-TM/";
   baseFolderDDU = "DT/04-LocalTrigger-DDU/";
   thresholdPhiMean  = ps.getUntrackedParameter<double>("thresholdPhiMean",1.5);
   thresholdPhiRMS   = ps.getUntrackedParameter<double>("thresholdPhiRMS",.5);
@@ -55,10 +55,7 @@ DTLocalTriggerLutTest::~DTLocalTriggerLutTest(){
 }
 
 
-void DTLocalTriggerLutTest::dqmEndLuminosityBlock(DQMStore::IBooker & ibooker, DQMStore::IGetter & igetter,
-                         edm::LuminosityBlock const & lumiSeg, edm::EventSetup const & context) {
-
-  if (bookingdone) return;
+void DTLocalTriggerLutTest::Bookings(DQMStore::IBooker & ibooker, DQMStore::IGetter & igetter) {
 
   vector<string>::const_iterator iTr   = trigSources.begin();
   vector<string>::const_iterator trEnd = trigSources.end();
@@ -119,6 +116,8 @@ void DTLocalTriggerLutTest::beginRun(const edm::Run& r, const edm::EventSetup& c
 
 void DTLocalTriggerLutTest::runClientDiagnostic(DQMStore::IBooker & ibooker, DQMStore::IGetter & igetter) {
 
+  if (!bookingdone) Bookings(ibooker,igetter);
+
   // Loop over Trig & Hw sources
   for (vector<string>::const_iterator iTr = trigSources.begin(); iTr != trigSources.end(); ++iTr){
     trigSource = (*iTr);
@@ -134,7 +133,7 @@ void DTLocalTriggerLutTest::runClientDiagnostic(DQMStore::IBooker & ibooker, DQM
 
 
 	if (doCorrStudy) {
-	  // Perform Correlation Plots analysis (DCC + segment Phi)
+	  // Perform Correlation Plots analysis (TM + segment Phi)
 
 	  TH2F * TrackPhitkvsPhitrig   = getHisto<TH2F>(igetter.get(getMEName("PhitkvsPhitrig","Segment", chId)));
 	
@@ -170,7 +169,7 @@ void DTLocalTriggerLutTest::runClientDiagnostic(DQMStore::IBooker & ibooker, DQM
 	    
 	  }
 	
-	  // Perform Correlation Plots analysis (DCC + segment Phib)
+	  // Perform Correlation Plots analysis (TM + segment Phib)
 	  TH2F * TrackPhibtkvsPhibtrig = getHisto<TH2F>(igetter.get(getMEName("PhibtkvsPhibtrig","Segment", chId)));
 	  
 	  if (stat != 3 && TrackPhibtkvsPhibtrig && TrackPhibtkvsPhibtrig->GetEntries()>10) {// station 3 has no meaningful MB3 phi bending information
@@ -346,5 +345,3 @@ void DTLocalTriggerLutTest::fillWhPlot(MonitorElement *plot, int sect, int stat,
 
 }
 
-
-void DTLocalTriggerLutTest::dqmEndJob(DQMStore::IBooker & ibooker, DQMStore::IGetter & igetter) {}

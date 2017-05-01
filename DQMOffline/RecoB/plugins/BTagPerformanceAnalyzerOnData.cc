@@ -1,7 +1,6 @@
 #include "DQMOffline/RecoB/plugins/BTagPerformanceAnalyzerOnData.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "DQMOffline/RecoB/interface/TagInfoPlotterFactory.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
 
 using namespace reco;
 using namespace edm;
@@ -21,12 +20,13 @@ BTagPerformanceAnalyzerOnData::BTagPerformanceAnalyzerOnData(const edm::Paramete
   ),
   etaRanges(pSet.getParameter< vector<double> >("etaRanges")),
   ptRanges(pSet.getParameter< vector<double> >("ptRanges")),
-  JECsource(pSet.getParameter<std::string>( "JECsource" )),
   doJEC(pSet.getParameter<bool>( "doJEC" )),
   moduleConfig(pSet.getParameter< vector<edm::ParameterSet> >("tagConfig"))
 {
   genToken = mayConsume<GenEventInfoProduct>(edm::InputTag("generator"));
   slInfoToken = consumes<SoftLeptonTagInfoCollection>(pSet.getParameter<InputTag>("softLeptonInfo"));
+  jecMCToken = mayConsume<JetCorrector>(pSet.getParameter<edm::InputTag>( "JECsourceMC" ));
+  jecDataToken = consumes<JetCorrector>(pSet.getParameter<edm::InputTag>( "JECsourceData" ));
   for (vector<edm::ParameterSet>::const_iterator iModule = moduleConfig.begin();
        iModule != moduleConfig.end(); ++iModule) {
 
@@ -47,30 +47,31 @@ BTagPerformanceAnalyzerOnData::BTagPerformanceAnalyzerOnData(const edm::Paramete
       tagCorrelationToken.push_back(std::pair< edm::EDGetTokenT<reco::JetTagCollection>, edm::EDGetTokenT<reco::JetTagCollection> >(consumes<JetTagCollection>(label1), consumes<JetTagCollection>(label2)));
     }
     else {
-      tagInfoInputTags.push_back(vector<edm::InputTag>());
+      vector<edm::InputTag> vIP;
       tiDataFormatType.push_back(dataFormatType);
       binTagInfoPlotters.push_back(vector<BaseTagInfoPlotter*>()) ;
       std::vector< edm::EDGetTokenT<edm::View<reco::BaseTagInfo>> > tokens;
       if(dataFormatType == "GenericMVA") {
-        const InputTag& ipinfo = iModule->getParameter<InputTag>("ipTagInfos");
-        const InputTag& svinfo = iModule->getParameter<InputTag>("svTagInfos");
-        tokens.push_back(consumes< View<BaseTagInfo> >(ipinfo));
-        tokens.push_back(consumes< View<BaseTagInfo> >(svinfo));
+        const std::vector<InputTag> listInfo = iModule->getParameter<vector<InputTag>>("listTagInfos"); 
+        for(unsigned int ITi=0; ITi<listInfo.size(); ITi++){ 
+          tokens.push_back(consumes< View<BaseTagInfo> >(listInfo[ITi]));
+	  vIP.push_back(listInfo[ITi]);
+	}
       }
       else {
         const InputTag& moduleLabel = iModule->getParameter<InputTag>("label");
         tokens.push_back(consumes< View<BaseTagInfo> >(moduleLabel));
+	vIP.push_back(moduleLabel);
       }
       tagInfoToken.push_back(tokens);
+      tagInfoInputTags.push_back(vIP);
     }
   }
 }
 
 void BTagPerformanceAnalyzerOnData::bookHistograms(DQMStore::IBooker & ibook, edm::Run const & run, edm::EventSetup const & es)
 {
-  //
   // Book all histograms.
-  //
 
   // iterate over ranges:
   const int iEtaStart = -1                   ;  // this will be the inactive one
@@ -119,7 +120,7 @@ void BTagPerformanceAnalyzerOnData::bookHistograms(DQMStore::IBooker & ibook, ed
             // Instantiate the generic b tag correlation plotter
             TagCorrelationPlotter* tagCorrelationPlotter = new TagCorrelationPlotter(label1.label(), label2.label(), etaPtBin,
                                                                                      iModule->getParameter<edm::ParameterSet>("parameters"),
-                                                                                     0, ibook);
+                                                                                     0, false, false, ibook);
             binTagCorrelationPlotters.at(iTagCorr).push_back(tagCorrelationPlotter);
           }
         }
@@ -144,11 +145,8 @@ void BTagPerformanceAnalyzerOnData::bookHistograms(DQMStore::IBooker & ibook, ed
           binTagInfoPlottersToModuleConfig.insert(make_pair(jetTagPlotter, iModule - moduleConfig.begin()));
 	}
       }
-      
     }
   }
-  
-  
 }
 
 EtaPtBin BTagPerformanceAnalyzerOnData::getEtaPtBin(const int& iEta, const int& iPt)
@@ -215,11 +213,11 @@ void BTagPerformanceAnalyzerOnData::analyze(const edm::Event& iEvent, const edm:
   if(doJEC) {
     edm::Handle<GenEventInfoProduct> genInfoHandle; //check if data or MC                                                                                                                                 
     iEvent.getByToken(genToken, genInfoHandle);
-    std::string allJECsource = JECsource;
-    if( !genInfoHandle.isValid() ) allJECsource += "Residual";
-    corrector = JetCorrector::getJetCorrector (allJECsource,iSetup);   //Get the jet corrector from the event setup
+    edm::Handle<JetCorrector> corrHandle;
+    if( !genInfoHandle.isValid() ) iEvent.getByToken( jecDataToken, corrHandle);
+    else iEvent.getByToken( jecMCToken, corrHandle);
+    corrector = corrHandle.product();
   }
-  //
 
 // Look first at the jetTags
 
@@ -246,9 +244,8 @@ void BTagPerformanceAnalyzerOnData::analyze(const edm::Event& iEvent, const edm:
       reco::Jet correctedJet = *(tagI->first);     
       double jec = 1.0;
       if(doJEC && corrector) {
-	jec = corrector->correction(*(tagI->first),iEvent,iSetup);
+	jec = corrector->correction(*(tagI->first));
       }
-      //
 
       if (!jetSelector(*(tagI->first), -1, infoHandle, jec)) 
 	continue;
@@ -282,9 +279,8 @@ void BTagPerformanceAnalyzerOnData::analyze(const edm::Event& iEvent, const edm:
       reco::Jet correctedJet = *(tagI->first);     
       double jec = 1.0;
       if(doJEC && corrector) {
-	jec = corrector->correction(*(tagI->first),iEvent,iSetup);
+	jec = corrector->correction(*(tagI->first));
       }
-      //
 
       if (!jetSelector(*(tagI->first), -1, infoHandle, jec))
         continue;
@@ -307,42 +303,31 @@ void BTagPerformanceAnalyzerOnData::analyze(const edm::Event& iEvent, const edm:
     for (int iPlotter = 0; iPlotter != plotterSize; ++iPlotter)
       binTagInfoPlotters[iJetLabel][iPlotter]->setEventSetup(iSetup);
 
-    vector<edm::InputTag> & inputTags = tagInfoInputTags[iJetLabel];
-    if (inputTags.empty()) {
-      // deferred retrieval of input tags
-      BaseTagInfoPlotter *firstPlotter = binTagInfoPlotters[iJetLabel][0];
-      int iModule = binTagInfoPlottersToModuleConfig[firstPlotter];
-      vector<string> labels = firstPlotter->tagInfoRequirements();
-      if (labels.empty())
-        labels.push_back("label");
-      for (vector<string>::const_iterator iLabels = labels.begin();
-           iLabels != labels.end(); ++iLabels) {
-        edm::InputTag inputTag =
-        	moduleConfig[iModule].getParameter<InputTag>(*iLabels);
-        inputTags.push_back(inputTag);
-      }
-    }
+    vector<edm::EDGetTokenT<edm::View<reco::BaseTagInfo>> > & tokens = tagInfoToken[iJetLabel];
+    //check number of tag infos = expected number of tag infos
+    BaseTagInfoPlotter *firstPlotter = binTagInfoPlotters[iJetLabel][0];
+    vector<string> labels = firstPlotter->tagInfoRequirements();
+    if (labels.empty())
+      labels.push_back("label");
+    if(labels.size()!=tokens.size()) throw cms::Exception("Configuration") << "Different number of Tag Infos than expected" << labels.size() << tokens.size() << endl;
 
-    unsigned int nInputTags = inputTags.size();
+    unsigned int nInputTags = tokens.size();
     vector< edm::Handle< View<BaseTagInfo> > > tagInfoHandles(nInputTags);
     edm::ProductID jetProductID;
     unsigned int nTagInfos = 0;
-    vector<edm::EDGetTokenT<edm::View<reco::BaseTagInfo>> > & tokens = tagInfoToken[iJetLabel];
-    if(nInputTags!=tokens.size()) throw cms::Exception("Configuration") << "Different number of Tag Infos than expected" << endl;
     for (unsigned int iInputTags = 0; iInputTags < tokens.size(); ++iInputTags) {
       edm::Handle< View<BaseTagInfo> > & tagInfoHandle = tagInfoHandles[iInputTags];
       iEvent.getByToken(tokens[iInputTags], tagInfoHandle); 
       //
       // protect against missing products
       //
-    if (tagInfoHandle.isValid() == false){
-      edm::LogWarning("BTagPerformanceAnalyzerOnData")<<" Collection "<<inputTags[iInputTags]<<" not present. Skipping it for this event.";
-      continue;
-    }
-
+      if (tagInfoHandle.isValid() == false){
+	edm::LogWarning("BTagPerformanceAnalyzerOnData")<<" Collection "<<tagInfoInputTags[iJetLabel][iInputTags]<<" not present. Skipping it for this event.";
+	continue;
+      }
 
       unsigned int size = tagInfoHandle->size();
-      LogDebug("Info") << "Found " << size << " B candidates in collection " << inputTags[iInputTags];
+      LogDebug("Info") << "Found " << size << " B candidates in collection " << tagInfoInputTags[iJetLabel][iInputTags];
       edm::ProductID thisProductID = (size > 0) ? (*tagInfoHandle)[0].jet().id() : edm::ProductID();
       if (iInputTags == 0) {
         jetProductID = thisProductID;
@@ -369,9 +354,8 @@ void BTagPerformanceAnalyzerOnData::analyze(const edm::Event& iEvent, const edm:
       reco::Jet correctedJet = *(jetRef);     
       double jec = 1.0;
       if(doJEC && corrector) {
-	jec = corrector->correction(*(jetRef),iEvent,iSetup);
+	jec = corrector->correction(*(jetRef));
       }
-      //
 
       if (!jetSelector(*jetRef, -1, infoHandle, jec))
         continue;

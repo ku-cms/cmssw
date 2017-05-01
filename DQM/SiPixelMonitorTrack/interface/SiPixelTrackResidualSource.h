@@ -44,6 +44,7 @@
 
 #include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
 
+#include "DataFormats/SiPixelDigi/interface/PixelDigi.h"
 
 class SiPixelTrackResidualSource : public DQMEDAnalyzer {
   public:
@@ -53,6 +54,7 @@ class SiPixelTrackResidualSource : public DQMEDAnalyzer {
     virtual void dqmBeginRun(const edm::Run& r, edm::EventSetup const& iSetup);
     virtual void bookHistograms(DQMStore::IBooker &, edm::Run const &, edm::EventSetup const &) override;
     virtual void analyze(const edm::Event&, const edm::EventSetup&);
+    void getrococcupancy(DetId detId,const edm::DetSetVector<PixelDigi> diginp,const TrackerTopology* const tTopo,std::vector<MonitorElement*> meinput);
     void triplets(double x1,double y1,double z1,double x2,double y2,double z2,double x3,double y3,double z3,
                   double ptsig, double & dc,double & dz, double kap); 
 
@@ -71,7 +73,9 @@ class SiPixelTrackResidualSource : public DQMEDAnalyzer {
     edm::EDGetTokenT<std::vector<reco::Track> > trackToken_;
     edm::EDGetTokenT<TrajTrackAssociationCollection> trackAssociationToken_;
     edm::EDGetTokenT<edmNew::DetSetVector<SiPixelCluster> > clustersrcToken_;
-
+    std::string vtxsrc_;
+    edm::InputTag digisrc_;
+    edm::EDGetTokenT<edm::DetSetVector<PixelDigi> > digisrcToken_;
 
     bool debug_; 
     bool modOn; 
@@ -163,11 +167,15 @@ class SiPixelTrackResidualSource : public DQMEDAnalyzer {
     //
 
     std::vector<MonitorElement*> meClPosLayersOnTrack;
+    std::vector<MonitorElement*> meClPosLayersLadVsModOnTrack;
     std::vector<MonitorElement*> meClPosLayersNotOnTrack;
     std::vector<MonitorElement*> meClPosDiskspzOnTrack;
     std::vector<MonitorElement*> meClPosDisksmzOnTrack;
     std::vector<MonitorElement*> meClPosDiskspzNotOnTrack;
     std::vector<MonitorElement*> meClPosDisksmzNotOnTrack;
+
+    std::vector<MonitorElement*> meZeroRocLadvsModOnTrackBarrel;
+    std::vector<MonitorElement*> meZeroRocLadvsModOffTrackBarrel;
     
     MonitorElement* meHitProbability;
     

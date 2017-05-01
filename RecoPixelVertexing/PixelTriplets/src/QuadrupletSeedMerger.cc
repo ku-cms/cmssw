@@ -2,6 +2,7 @@
 #include "RecoPixelVertexing/PixelTriplets/plugins/KDTreeLinkerAlgo.h"
 #include "RecoPixelVertexing/PixelTriplets/plugins/KDTreeLinkerTools.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 
 #include "RecoTracker/TkSeedGenerator/interface/SeedCreatorFactory.h"
 
@@ -110,7 +111,7 @@ const OrderedSeedingHits& QuadrupletSeedMerger::mergeTriplets( const OrderedSeed
 
   //Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHand;
-  es.get<IdealGeometryRecord>().get(tTopoHand);
+  es.get<TrackerTopologyRcd>().get(tTopoHand);
   const TrackerTopology *tTopo=tTopoHand.product();
   
   // the list of layers on which quadruplets should be formed
@@ -672,7 +673,7 @@ bool SeedMergerPixelLayer::isValidName( const std::string& name ) {
   }
 
   else if( std::string::npos != name.find( "FPix" ) ) {
-    if( layer > 0 && layer < 4 ) {
+    if( layer > 0 && layer < 10 ) {
       if( std::string::npos != name.find( "pos", 6 ) || std::string::npos != name.find( "neg", 6 ) ) return true;
     }
 

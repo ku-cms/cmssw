@@ -27,7 +27,6 @@ Test of the EventPrincipal class.
 #include "FWCore/Framework/interface/RunPrincipal.h"
 #include "FWCore/Framework/interface/HistoryAppender.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/RootAutoLibraryLoader/interface/RootAutoLibraryLoader.h"
 #include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/Utilities/interface/GetPassID.h"
 #include "FWCore/Utilities/interface/GlobalIdentifier.h"
@@ -140,8 +139,6 @@ test_ep::fake_single_process_branch(std::string const& tag,
 
 void test_ep::setUp() {
 
-  edm::RootAutoLibraryLoader::enable();
-
   // Making a functional EventPrincipal is not trivial, so we do it
   // all here.
   eventID_ = edm::EventID(101, 1, 20);
@@ -178,8 +175,8 @@ void test_ep::setUp() {
 
     edm::BranchDescription const branchFromRegistry(it->second);
 
-    auto entryDescriptionPtr = std::make_shared<edm::Parentage>();
-    edm::ProductProvenance prov(branchFromRegistry.branchID(), entryDescriptionPtr);
+    std::vector<edm::BranchID> const ids;
+    edm::ProductProvenance prov(branchFromRegistry.branchID(), ids);
 
     std::shared_ptr<edm::ProcessConfiguration> process(processConfigurations_[tag]);
     assert(process);
@@ -236,7 +233,7 @@ void test_ep::failgetbyLabelTest() {
 
   std::string label("this does not exist");
 
-  edm::BasicHandle h(pEvent_->getByLabel(edm::PRODUCT_TYPE, tid, label, std::string(), std::string(), nullptr, nullptr));
+  edm::BasicHandle h(pEvent_->getByLabel(edm::PRODUCT_TYPE, tid, label, std::string(), std::string(), nullptr, nullptr, nullptr));
   CPPUNIT_ASSERT(h.failedToGet());
 }
 
@@ -245,7 +242,7 @@ void test_ep::failgetManybyTypeTest() {
   edm::TypeID tid(dummy);
   std::vector<edm::BasicHandle > handles;
 
-  pEvent_->getManyByType(tid, handles, nullptr, nullptr);
+  pEvent_->getManyByType(tid, handles, nullptr, nullptr, nullptr);
   CPPUNIT_ASSERT(handles.empty());
 }
 

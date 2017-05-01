@@ -5,6 +5,7 @@
 #include "FWCore/ServiceRegistry/interface/ActivityRegistry.h"
 #include "FWCore/Utilities/interface/Algorithms.h"
 #include "FWCore/Utilities/interface/ExceptionCollector.h"
+#include "FWCore/Utilities/interface/DictionaryTools.h"
 
 static const std::string kFilterType("EDFilter");
 static const std::string kProducerType("EDProducer");
@@ -101,7 +102,6 @@ namespace edm {
     }
     
     for_all(allWorkers_, std::bind(&Worker::beginJob, std::placeholders::_1));
-    loadMissingDictionaries();
   }
 
   void
@@ -134,7 +134,7 @@ namespace edm {
   WorkerManager::setupOnDemandSystem(EventPrincipal& ep, EventSetup const& es) {
     // NOTE: who owns the productdescrption?  Just copied by value
     unscheduled_->setEventSetup(es);
-    ep.setUnscheduledHandler(unscheduled_);
+    ep.setUnscheduledHandler(unscheduled());
   }
   
 }

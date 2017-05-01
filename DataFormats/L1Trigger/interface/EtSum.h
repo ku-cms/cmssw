@@ -9,6 +9,9 @@ namespace l1t {
 
   class EtSum;
   typedef BXVector<EtSum> EtSumBxCollection;
+  typedef edm::Ref< EtSumBxCollection > EtSumRef ;
+  typedef edm::RefVector< EtSumBxCollection > EtSumRefVector ;
+  typedef std::vector< EtSumRef > EtSumVectorRef ;
 
   class EtSum : public L1Candidate {
 
@@ -23,6 +26,13 @@ namespace l1t {
       kTotalEty,
       kTotalHtx,
       kTotalHty,
+      kMissingEt2,
+      kTotalEtx2,
+      kTotalEty2,
+      kMinBiasHFP0,
+      kMinBiasHFM0,
+      kMinBiasHFP1,
+      kMinBiasHFM1      
     };
 
     EtSum(){}

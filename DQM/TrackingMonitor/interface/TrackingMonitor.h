@@ -128,7 +128,7 @@ class TrackingMonitor : public DQMEDAnalyzer
 	MonitorElement* NumberOfRecHitsPerTrackVsLS;
 
 	// Monitoring PU
-	MonitorElement* NumberOfTracksVsGoodPVtx;
+	MonitorElement *NumberOfTracksVsGoodPVtx, *NumberOfTracksVsPUPVtx;
 	MonitorElement* NumberOfTracksVsBXlumi;
 
 	// add in order to deal with LS transitions
@@ -160,6 +160,7 @@ class TrackingMonitor : public DQMEDAnalyzer
 
 	StringCutObjectSelector<reco::Track,true> numSelection_;
 	StringCutObjectSelector<reco::Track,true> denSelection_;
+	int pvNDOF_;
 
 };
 

@@ -68,6 +68,8 @@ detachedQuadStepSeeds.SeedComparitorPSet = cms.PSet(
     )
 detachedQuadStepSeeds.ClusterCheckPSet.doClusterCheck = cms.bool(False)
 detachedQuadStepSeeds.OrderedHitsFactoryPSet.GeneratorPSet.maxElement = cms.uint32(0)
+detachedQuadStepSeeds.SeedCreatorPSet.magneticField = ''
+detachedQuadStepSeeds.SeedCreatorPSet.propagator = 'PropagatorWithMaterial'
 
 # QUALITY CUTS DURING TRACK BUILDING
 import TrackingTools.TrajectoryFiltering.TrajectoryFilter_cff
@@ -85,8 +87,8 @@ detachedQuadStepTrajectoryFilter = TrackingTools.TrajectoryFiltering.TrajectoryF
                  cms.PSet(refToPSet_ = cms.string('ClusterShapeTrajectoryFilter'))]
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-detachedQuadStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+detachedQuadStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
     ComponentName = cms.string('detachedQuadStepChi2Est'),
     nSigma = cms.double(3.0),
     MaxChi2 = cms.double(9.0)
@@ -128,13 +130,10 @@ detachedQuadStepTrackCandidates.TrajectoryCleaner = 'detachedQuadStepTrajectoryC
 # TRACK FITTING
 import RecoTracker.TrackProducer.TrackProducer_cfi
 detachedQuadStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.clone(
-    # Algorithm name changed from detachedQuadStep (was iter4) to mixedTripletStep in order
-    # to keep backward compatibility as detachedQuadStep would be unknown.
-    # In the future, a new enum or alias may be added to support iteration name aliases.
-    AlgorithmName = cms.string('mixedTripletStep'),
+    AlgorithmName = cms.string('detachedQuadStep'),
     src = 'detachedQuadStepTrackCandidates',
     Fitter = cms.string('FlexibleKFFittingSmoother'),
-    TTRHBuilder=cms.string('WithTrackAngle'), minGoodCharge = cms.double(2069)
+    TTRHBuilder=cms.string('WithTrackAngle')
     )
 
 # TRACK SELECTION AND QUALITY FLAG SETTING.

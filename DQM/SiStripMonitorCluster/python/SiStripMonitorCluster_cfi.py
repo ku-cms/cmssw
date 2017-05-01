@@ -15,6 +15,8 @@ SiStripMonitorCluster = cms.EDAnalyzer("SiStripMonitorCluster",
     ClusterLabel = cms.string(''),
 
     TkHistoMap_On = cms.bool(True),
+
+    ClusterChTkHistoMap_On = cms.bool(True),
                                      
     TopFolderName = cms.string('SiStrip'),
 
@@ -145,9 +147,9 @@ SiStripMonitorCluster = cms.EDAnalyzer("SiStripMonitorCluster",
     ),
 
     TH1TotalNumberOfClusters = cms.PSet(
-        Nbinx          = cms.int32(80),
+        Nbinx          = cms.int32(100),
         xmin           = cms.double(-0.5),
-        xmax           = cms.double(15999.5),
+        xmax           = cms.double(14999.5),
         subdetswitchon = cms.bool(False)
     ),
                                        
@@ -203,20 +205,20 @@ SiStripMonitorCluster = cms.EDAnalyzer("SiStripMonitorCluster",
         ),
 
     TH2CStripVsCpixel = cms.PSet(
-        Nbinsx = cms.int32(150),
+        Nbinsx = cms.int32(300),
         xmin   = cms.double(-0.5),
-        xmax   = cms.double(74999.5),
-        Nbinsy = cms.int32(50),
+        xmax   = cms.double(149999.5),
+        Nbinsy = cms.int32(60),
         ymin   = cms.double(-0.5),
-        ymax   = cms.double(14999.5),
+        ymax   = cms.double(17999.5),
         globalswitchon = cms.bool(True)
         ),
                                        
     MultiplicityRegions = cms.PSet(
-        k0 = cms.double(0.13),  # k from linear fit of the diagonal default 0.13
+        k0 = cms.double(0.097),  # k from linear fit of the diagonal default 0.13
         q0 = cms.double(300),   # +/- variation of y axis intercept default 300
         dk0 = cms.double(40),   #+/- variation of k0 (in %) to contain the diagonal zone defoult 40
-        MaxClus = cms.double(20000), #Divide Region 2 and Region 3  default 20000
+        MaxClus = cms.double(26000), #Divide Region 2 and Region 3  default 20000
         MinPix = cms.double(50)  # minimum number of Pix clusters to flag events with zero Si clusters default 50
         ),
                                        
@@ -242,8 +244,8 @@ SiStripMonitorCluster = cms.EDAnalyzer("SiStripMonitorCluster",
                                        
 # Number of Cluster in Strip
     TH1NClusStrip = cms.PSet(
-        Nbinsx = cms.int32(500),
-        xmax = cms.double(99999.5),                      
+        Nbinsx = cms.int32(600),
+        xmax = cms.double(119999.5),                      
         xmin = cms.double(-0.5)
         ),
 
@@ -269,6 +271,19 @@ SiStripMonitorCluster = cms.EDAnalyzer("SiStripMonitorCluster",
         ymin = cms.double(0.),
         ymax = cms.double(90*262144),
         globalswitchon = cms.bool(True)
+        ),
+
+    ClusWidthVsAmpTH2 = cms.PSet(
+        Nbinsx = cms.int32(2000),
+        xmin = cms.double(0.),
+        xmax = cms.double(2000.),
+        Nbinsy = cms.int32(100),
+        ymin = cms.double(0.),
+        ymax = cms.double(100.),
+        globalswitchon = cms.bool(True),
+        subdetswitchon = cms.bool(False), 
+        layerswitchon  = cms.bool(False),
+        moduleswitchon = cms.bool(False)
         ),
 
     Mod_On = cms.bool(True),

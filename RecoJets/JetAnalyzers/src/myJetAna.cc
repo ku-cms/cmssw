@@ -67,7 +67,6 @@
 // #include "DataFormats/Scalers/interface/DcsStatus.h"
 
 // include files
-#include "CommonTools/RecoAlgos/interface/HBHENoiseFilter.h"
 #include "DataFormats/METReco/interface/HcalNoiseSummary.h"
 
 #include "DataFormats/METReco/interface/HcalCaloFlagLabels.h"  
@@ -1005,7 +1004,7 @@ void myJetAna::analyze( const edm::Event& evt, const edm::EventSetup& es ) {
   // **************************
   // ***  Pass Vertex
   // **************************
-  double VTX;
+  double VTX = 0.;
   int nVTX;
 
   edm::Handle<reco::VertexCollection> vertexCollection;
@@ -1049,11 +1048,11 @@ void myJetAna::analyze( const edm::Event& evt, const edm::EventSetup& es ) {
   // ********************************
   edm::Handle< edmNew::DetSetVector<SiPixelCluster> > hClusterColl;
   evt.getByLabel("siPixelClusters", hClusterColl);
-  const edmNew::DetSetVector<SiPixelCluster> clustColl = *(hClusterColl.product());
+  auto const & clustColl = *(hClusterColl.product());
 
   edm::Handle<reco::TrackCollection> trackCollection;
   evt.getByLabel("generalTracks", trackCollection);
-  const reco::TrackCollection tC = *(trackCollection.product());
+  auto const &  tC = *(trackCollection.product());
 
 
   // **************************

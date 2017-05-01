@@ -47,11 +47,11 @@ const GeomDet* ME0Geometry::idToDet(DetId id) const{
     i->second : 0 ;
 }
 
-/*
-const std::vector<ME0Chamber*>& ME0Geometry::chambers() const {
+
+const std::vector<ME0Chamber const*>& ME0Geometry::chambers() const {
   return allChambers;
 }
-*/
+
 
 
 const std::vector<ME0EtaPartition const*>& ME0Geometry::etaPartitions() const{
@@ -70,9 +70,19 @@ ME0Geometry::add(ME0EtaPartition* etaPartition){
   theEtaPartitions.push_back(etaPartition);
   theEtaPartitionIds.push_back(etaPartition->geographicalId());
   theDetIds.push_back(etaPartition->geographicalId());
-  GeomDetType* _t = const_cast<GeomDetType*>(&etaPartition->type());
-  theEtaPartitionTypes.push_back(_t);
+  theEtaPartitionTypes.push_back(&etaPartition->type());
   theMap.insert(std::pair<DetId,GeomDetUnit*>
 		(etaPartition->geographicalId(),etaPartition));
+}
+
+
+
+void
+ME0Geometry::add(ME0Chamber* chamber){
+  allChambers.push_back(chamber);
+  theDets.push_back(chamber);
+  theDetIds.push_back(chamber->geographicalId());
+  theMap.insert(std::pair<DetId,GeomDet*>
+		(chamber->geographicalId(),chamber));
 }
 

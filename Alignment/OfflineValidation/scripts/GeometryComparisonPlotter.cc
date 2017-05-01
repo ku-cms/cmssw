@@ -24,10 +24,19 @@
 
 // CONSTRUCTOR AND DESTRUCTOR
 GeometryComparisonPlotter::GeometryComparisonPlotter (TString tree_file_name,
-                                                      TString output_directory) :
+                                                      TString output_directory,
+                                                      TString modulesToPlot,
+                                                      TString alignmentName,
+                                                      TString referenceName,
+                                                      TString printOnlyGlobal
+                                                      ) :
     _output_directory(output_directory + TString(output_directory.EndsWith("/") ? "" : "/")),
     _output_filename("comparison.root"),
     _print_option("pdf"),
+    _module_plot_option(modulesToPlot),
+    _alignment_name(alignmentName),
+    _reference_name(referenceName),
+    _print_only_global(printOnlyGlobal),
     _print(true),       // print the graphs in a file (e.g. pdf)
     _legend(true),      // print the graphs in a file (e.g. pdf)
     _write(true),       // write the graphs in a root file
@@ -67,13 +76,15 @@ GeometryComparisonPlotter::GeometryComparisonPlotter (TString tree_file_name,
     tree_file = new TFile(tree_file_name, "UPDATE");
     data = (TTree*) tree_file->Get("alignTree");
     // int branches
-    data->SetBranchAddress("id"         ,&branch_i["id"]);      
-    data->SetBranchAddress("mid"        ,&branch_i["mid"]);     
-    data->SetBranchAddress("level"      ,&branch_i["level"]);   
-    data->SetBranchAddress("mlevel"     ,&branch_i["mlevel"]);  
-    data->SetBranchAddress("sublevel"   ,&branch_i["sublevel"]);
-    data->SetBranchAddress("useDetId"   ,&branch_i["useDetId"]);
-    data->SetBranchAddress("detDim"     ,&branch_i["detDim"]);  
+    data->SetBranchAddress("id"         		,&branch_i["id"]);      
+    data->SetBranchAddress("inModuleList"   	,&branch_i["inModuleList"]);      
+    data->SetBranchAddress("badModuleQuality"   ,&branch_i["badModuleQuality"]);     
+    data->SetBranchAddress("mid"        		,&branch_i["mid"]);     
+    data->SetBranchAddress("level"      		,&branch_i["level"]);   
+    data->SetBranchAddress("mlevel"     		,&branch_i["mlevel"]);  
+    data->SetBranchAddress("sublevel"  			,&branch_i["sublevel"]);
+    data->SetBranchAddress("useDetId"   		,&branch_i["useDetId"]);
+    data->SetBranchAddress("detDim"     		,&branch_i["detDim"]);  
     // float branches
     data->SetBranchAddress("x"          ,&branch_f["x"]);       
     data->SetBranchAddress("y"          ,&branch_f["y"]);       
@@ -177,7 +188,9 @@ GeometryComparisonPlotter::~GeometryComparisonPlotter ()
 
 // MAIN METHOD
 void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine to plot
-                                           vector<TString> y) // every combination (except the ones such that x=y) will be perfomed
+                                           vector<TString> y, // every combination (except the ones such that x=y) will be perfomed
+                                           vector<float> dyMin, // Minimum of y-variable to enable fixed ranges of the histogram
+                                           vector<float> dyMax) // Minimum of y-variable
 {
     /// -1) check that only existing branches are called 
     // (we use a macro to avoid copy/paste)
@@ -224,20 +237,43 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
     // - 0=Tracker, with color code for the different sublevels
     // - 1..6=different sublevels, with color code for z < or > 0
     // (convention: the six first (resp. last) correspond to z>0 (resp. z<0))
-    // This means that 2*6 TGraphs will be filled during the loop on the TTree,
+    // Modules with bad quality and in a list of modules that is given
+    // by the user (e.g. list of bad/untouched modules, default: empty list) 
+    // are stored in seperate graphs and might be plotted (depends on the module
+    // plot option, default: all modules plotted)
+    // This means that 3*2*6 TGraphs will be filled during the loop on the TTree,
     // and will be arranged differently with different color codes in the TMultiGraphs
 #ifndef NB_SUBLEVELS
 #define NB_SUBLEVELS 6
 #endif
 #define NB_Z_SLICES 2
-    TGraph * graphs[x.size()][y.size()][NB_SUBLEVELS*NB_Z_SLICES];
-    long int ipoint[x.size()][y.size()][NB_SUBLEVELS*NB_Z_SLICES];
+#define NB_MODULE_QUALITY 3
+ 
+    TGraph * graphs[x.size()][y.size()][NB_SUBLEVELS*NB_Z_SLICES*NB_MODULE_QUALITY];
+    long int ipoint[x.size()][y.size()][NB_SUBLEVELS*NB_Z_SLICES*NB_MODULE_QUALITY];
+    
+    TMultiGraph * mgraphs[x.size()][y.size()][1+NB_SUBLEVELS]; // the 0th is for global plots, the 1..6th for sublevel plots
+    TCanvas * c[x.size()][y.size()][1+NB_SUBLEVELS],
+            * c_global[1+NB_SUBLEVELS];
+    canvas_index++; // this static index is a safety used in case the MakePlots method is used several times to avoid overloading
+    
+    
+    for (unsigned int ic = 0 ; ic <= NB_SUBLEVELS ; ic++)
+    {
+        c_global[ic] = new TCanvas (TString::Format("global_%s_%d", ic==0?"tracker":_sublevel_names[ic-1].Data(),
+                                                                    canvas_index),
+                                    TString::Format("Global overview of the %s variables", ic==0?"tracker":_sublevel_names[ic-1].Data()),
+                                   _window_width,
+                                   _window_height);
+        c_global[ic]->Divide(x.size(),y.size());
+    }
+    
     for (unsigned int ix = 0 ; ix < x.size() ; ix++)
     { 
         for (unsigned int iy = 0 ; iy < y.size() ; iy++)
         {
             //if (x[ix] == y[iy]) continue;       // do not plot graphs like (r,r) or (phi,phi)
-            for (unsigned int igraph = 0 ; igraph < NB_SUBLEVELS*NB_Z_SLICES ; igraph++)
+            for (unsigned int igraph = 0 ; igraph < NB_SUBLEVELS*NB_Z_SLICES*NB_MODULE_QUALITY ; igraph++)
             {
                 // declaring
                 ipoint[ix][iy][igraph] = 0; // the purpose of an index for every graph is to avoid thousands of points at the origin of each
@@ -246,16 +282,24 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                 graphs[ix][iy][igraph]->SetMarkerColor(COLOR_CODE(igraph));
                 graphs[ix][iy][igraph]->SetMarkerStyle(6);
                 // pimping
-                graphs[ix][iy][igraph]->SetName (x[ix]+y[iy]+_sublevel_names[igraph%NB_SUBLEVELS]+TString(igraph>=NB_SUBLEVELS ? "n"      : "p"       ));
-                graphs[ix][iy][igraph]->SetTitle(            _sublevel_names[igraph%NB_SUBLEVELS]+TString(igraph>=NB_SUBLEVELS ? " at z<0": " at z>=0")
+                graphs[ix][iy][igraph]->SetName (x[ix]+y[iy]+_sublevel_names[igraph%NB_SUBLEVELS]
+													+TString(igraph%(NB_SUBLEVELS*NB_Z_SLICES)>=NB_SUBLEVELS ? "n"      : "p" )    // graphs for negative/positive  z 
+													+TString(igraph >= NB_SUBLEVELS*NB_Z_SLICES ? 
+															( igraph >= 2*NB_SUBLEVELS*NB_Z_SLICES ? 	"bad" : "list") : "good" ));// graphs for good, bad modules and from a list 
+                graphs[ix][iy][igraph]->SetTitle(            _sublevel_names[igraph%NB_SUBLEVELS]
+												+TString(igraph%(NB_SUBLEVELS*NB_Z_SLICES)>=NB_SUBLEVELS ? " at z<0": " at z>=0")
+												+TString(igraph >= NB_SUBLEVELS*NB_Z_SLICES ? 
+															( igraph >= 2*NB_SUBLEVELS*NB_Z_SLICES ? 	" bad modules" : " in list") : " good modules" )
                                                 + TString (";") + LateXstyle(x[ix]) + " /" + _units[x[ix]]
-                                                + TString (";") + LateXstyle(y[iy]) + " /" + _units[y[iy]]);
-                graphs[ix][iy][igraph]->SetMarkerStyle(6);
+                                                + TString (";") + LateXstyle(y[iy]) + " /" + _units[y[iy]]);							
+                graphs[ix][iy][igraph]->SetMarkerStyle(igraph >= NB_SUBLEVELS*NB_Z_SLICES ? 								
+															( igraph >= 2*NB_SUBLEVELS*NB_Z_SLICES ? 	4 : 5) :  6);  // empty circle for bad modules, X for those in list, dot for good ones
             }
         }
     }
+   
 #ifdef DEBUG
-    cout << __FILE__ << ":" << __LINE__ << ":Info: Creation of the TGraph[" << x.size() << "][" << y.size() << "][" << NB_SUBLEVELS*NB_Z_SLICES << "] ended." << endl;
+    cout << __FILE__ << ":" << __LINE__ << ":Info: Creation of the TGraph[" << x.size() << "][" << y.size() << "][" << NB_SUBLEVELS*NB_Z_SLICES*NB_MODULE_QUALITY << "] ended." << endl;
 #endif
 
     /// 2) loop on the TTree data
@@ -309,11 +353,62 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                 }
 
                 // FILLING GRAPH
-                const short int igraph = (branch_i["sublevel"]-1) + (branch_f["z"]>=0?0:NB_SUBLEVELS);
-                graphs[ix][iy][igraph]->SetPoint(ipoint[ix][iy][igraph],
-                                                 _SF[x[ix]]*branch_f[x[ix]],
-                                                 _SF[y[iy]]*branch_f[y[iy]]);
-                ipoint[ix][iy][igraph]++;
+                 if (y.size() >= x.size()){
+	                if (branch_i["inModuleList"]==0 && branch_i["badModuleQuality"]==0 ){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS);
+						graphs[ix][iy][igraph]->SetPoint(ipoint[ix][iy][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[ix][iy][igraph]++;
+					}
+	                if (branch_i["inModuleList"]>0){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS)
+													+ NB_SUBLEVELS*NB_Z_SLICES;
+						graphs[ix][iy][igraph]->SetPoint(ipoint[ix][iy][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[ix][iy][igraph]++;
+					}
+	                if (branch_i["badModuleQuality"]>0){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS)
+													+ 2*NB_SUBLEVELS*NB_Z_SLICES;
+						graphs[ix][iy][igraph]->SetPoint(ipoint[ix][iy][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[ix][iy][igraph]++;
+					}
+				}
+                else{
+	                if (branch_i["inModuleList"]==0 && branch_i["badModuleQuality"]==0 ){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS);
+						graphs[iy][ix][igraph]->SetPoint(ipoint[iy][ix][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[iy][ix][igraph]++;
+					}
+	                if (branch_i["inModuleList"]>0){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS)
+													+ NB_SUBLEVELS*NB_Z_SLICES;
+						graphs[iy][ix][igraph]->SetPoint(ipoint[iy][ix][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[iy][ix][igraph]++;
+					}
+	                if (branch_i["badModuleQuality"]>0){
+						const short int igraph = (branch_i["sublevel"]-1) 
+													+ (branch_f["z"]>=0?0:NB_SUBLEVELS)
+													+ 2*NB_SUBLEVELS*NB_Z_SLICES;
+						graphs[iy][ix][igraph]->SetPoint(ipoint[ix][iy][igraph],
+	                                                 _SF[x[ix]]*branch_f[x[ix]],
+	                                                 _SF[y[iy]]*branch_f[y[iy]]);
+		                ipoint[iy][ix][igraph]++;
+					}
+				}
             }
         }
     }
@@ -336,54 +431,35 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
 #endif
     }
     // declaring TMultiGraphs and TCanvas
-    TMultiGraph * mgraphs[x.size()][y.size()][1+NB_SUBLEVELS]; // the 0th is for global plots, the 1..6th for sublevel plots
-    TCanvas * c[x.size()][y.size()][1+NB_SUBLEVELS],
-            * c_global[1+NB_SUBLEVELS];
-    canvas_index++; // this static index is a safety used in case the MakePlots method is used several times to avoid overloading
-    for (unsigned int ic = 0 ; ic <= NB_SUBLEVELS ; ic++)
-    {
-        c_global[ic] = new TCanvas (TString::Format("global_%s_%d", ic==0?"tracker":_sublevel_names[ic-1].Data(),
-                                                                    canvas_index),
-                                    TString::Format("Global overview of the %s variables", ic==0?"tracker":_sublevel_names[ic-1].Data()),
-                                   _window_width,
-                                   _window_height);
-        c_global[ic]->Divide(x.size(),y.size());
-    }
-#define INDEX_IN_GLOBAL_CANVAS(i1,i2) 1 + i1 + i2*x.size()
+    // Usually more y variables than x variables
     // creating TLegend
     TLegend * legend = MakeLegend(.1,.92,.9,1.);
     if (_write) legend->Write();
+    
+    // check which modules are supposed to be plotted 
+    unsigned int n_module_types = 1;
+    if (_module_plot_option == "all"){
+		n_module_types = 3;				//plot all modules (good, list and bad )
+	}
+	else if (_module_plot_option == "list"){
+		n_module_types = 2; 				// plot good modules and those in the list
+	}
+	else if (_module_plot_option == "good"){
+		n_module_types = 1; 				// only plot the modules that are neither bad or in the list
+	}
+    
+
+#define INDEX_IN_GLOBAL_CANVAS(i1,i2) 1 + i1 + i2*x.size()
     // running on the TGraphs to produce the TMultiGraph and draw/print them
     for (unsigned int ix = 0 ; ix < x.size() ; ix++)
     {
 #ifdef DEBUG
         cout << __FILE__ << ":" << __LINE__ << ":Info: x[" << ix << "]="<< x[ix] << endl;
 #endif
-//        // left and right margin for drawing
-//        double  left_margin_factor = 1.,
-//               right_margin_factor = 1.;
-//             if (_min[x[ix]] > 0)  left_margin_factor = 0.9;
-//        else if (_min[x[ix]] < 0)  left_margin_factor = 1.1;
-//             if (_max[x[ix]] > 0) right_margin_factor = 1.1;
-//        else if (_max[x[ix]] < 0) right_margin_factor = 0.9;
-//#ifdef DEBUG
-//        cout << __FILE__ << ":" << __LINE__ << ":Info: left_margin_factor=" <<  left_margin_factor
-//                                            <<  " and right_margin_factor=" << right_margin_factor << endl;
-//#endif
+
         // looping on Y axes
         for (unsigned int iy = 0 ; iy < y.size() ; iy++)
         {
-//            // lower and upper margin for drawing
-//            double lower_margin_factor = 1.,
-//                   upper_margin_factor = 1.;
-//                 if (_min[y[iy]] > 0) lower_margin_factor = 0.9;
-//            else if (_min[y[iy]] < 0) lower_margin_factor = 1.1;
-//                 if (_max[y[iy]] > 0) upper_margin_factor = 1.1;
-//            else if (_max[y[iy]] < 0) upper_margin_factor = 0.9;
-//#ifdef DEBUG
-//            cout << __FILE__ << ":" << __LINE__ << ":Info: lower_margin_factor=" << lower_margin_factor
-//                                                <<   " and upper_margin_factor=" << upper_margin_factor << endl;
-//#endif
 
 
 #ifdef DEBUG
@@ -401,21 +477,9 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
             /// TRACKER
             // fixing ranges and filling TMultiGraph
             // for (unsigned short int jgraph = NB_SUBLEVELS*NB_Z_SLICES-1 ; jgraph >= 0 ; --jgraph)
-            for (unsigned short int jgraph = 0 ; jgraph < NB_SUBLEVELS*NB_Z_SLICES ; jgraph++)
+            for (unsigned short int jgraph = 0 ; jgraph < NB_SUBLEVELS*NB_Z_SLICES*n_module_types ; jgraph++)
             {
-                unsigned short int igraph = NB_SUBLEVELS*NB_Z_SLICES - jgraph - 1; // reverse counting for humane readability (one of the sublevel takes much more place than the others)
-//#ifdef DEBUG
-//                cout << __FILE__ << ":" << __LINE__ << ":Info: setting X-axis range of " << graphs[ix][iy][jgraph]->GetName() << endl;
-//#endif
-//                graphs[ix][iy][jgraph]->GetXaxis()->SetLimits   ( left_margin_factor*_min[x[ix]],
-//                                                                 right_margin_factor*_max[x[ix]]); // for X axis, use SetLimits
-//#ifdef DEBUG
-//                cout << __FILE__ << ":" << __LINE__ << ":Info: setting Y-axis range of " << graphs[ix][iy][jgraph]->GetName() << endl;
-//#endif
-//                graphs[ix][iy][jgraph]->GetYaxis()->SetRangeUser(lower_margin_factor*_min[y[iy]],
-//                                                                 upper_margin_factor*_max[y[iy]]); // for Y axis, use SetRangeUser
-//                // moreover, for the ranges to be effective in TMultiGraph, the option AP should be given for the first graph and 
-//                // only P for the others (assuming all stacked graphs have received the same x- and y-ranges)
+                unsigned short int igraph = NB_SUBLEVELS*NB_Z_SLICES*n_module_types - jgraph - 1; // reverse counting for humane readability (one of the sublevel takes much more place than the others)
 
 #ifdef DEBUG
                 cout << __FILE__ << ":" << __LINE__ << ":Info: writing TGraph to file" << endl;
@@ -440,6 +504,7 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                 // color
                 gr->SetMarkerColor(COLOR_CODE(igraph%NB_SUBLEVELS));
                 mgraphs[ix][iy][0]->Add(gr, "P");//, (mgraphs[ix][iy][0]->GetListOfGraphs()==0?"AP":"P"));
+   
             }
             
             /// SUBLEVELS (1..6)
@@ -457,8 +522,13 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                                                               _sublevel_names[isublevel-1]                                 // graph title
                                                               + TString (";") + LateXstyle(x[ix]) + " /" + _units[x[ix]]   // x axis title
                                                               + TString (";") + LateXstyle(y[iy]) + " /" + _units[y[iy]]); // y axis title
+                                                              
                  graphs[ix][iy][             isublevel-1]->SetMarkerColor(kBlack);
                  graphs[ix][iy][NB_SUBLEVELS+isublevel-1]->SetMarkerColor(kRed);
+                 graphs[ix][iy][2*NB_SUBLEVELS+isublevel-1]->SetMarkerColor(kGray+1);
+                 graphs[ix][iy][3*NB_SUBLEVELS+isublevel-1]->SetMarkerColor(kRed-7);
+                 graphs[ix][iy][4*NB_SUBLEVELS+isublevel-1]->SetMarkerColor(kGray+1);
+                 graphs[ix][iy][5*NB_SUBLEVELS+isublevel-1]->SetMarkerColor(kRed-7);
                 if (graphs[ix][iy][             isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][             isublevel-1], "P"); //(mgraphs[ix][iy][isublevel-1]->GetListOfGraphs()==0?"AP":"P")); // z>0
 #ifdef TALKATIVE
                 else    cout << __FILE__ << ":" << __LINE__ << ":Info: graphs[ix][iy][isublevel-1]=" << graphs[ix][iy][isublevel-1]->GetName() << " is empty -> not added into " << mgraphs[ix][iy][isublevel]->GetName() << endl;
@@ -470,7 +540,18 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
 #if NB_Z_SLICES!=2
                 cout << __FILE__ << ":" << __LINE__ << ":Error: color code incomplete for Z slices..." << endl;
 #endif
+	             if (_module_plot_option == "all"){
+					if (graphs[ix][iy][2*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][2*NB_SUBLEVELS+isublevel-1], "P");
+					if (graphs[ix][iy][3*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][3*NB_SUBLEVELS+isublevel-1], "P");
+					if (graphs[ix][iy][4*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][4*NB_SUBLEVELS+isublevel-1], "P");
+					if (graphs[ix][iy][5*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][5*NB_SUBLEVELS+isublevel-1], "P");
+					}
+				if (_module_plot_option == "list"){
+					if (graphs[ix][iy][2*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][2*NB_SUBLEVELS+isublevel-1], "P");
+					if (graphs[ix][iy][3*NB_SUBLEVELS+isublevel-1]->GetN() > 0) mgraphs[ix][iy][isublevel]->Add(graphs[ix][iy][3*NB_SUBLEVELS+isublevel-1], "P");
+				}
             }
+            
 
             // fixing ranges, saving, and drawing of TMultiGraph (tracker AND sublevels, i.e. 1+NB_SUBLEVELS objects)
             // the individual canvases are saved, but the global are just drawn and will be saved later
@@ -490,21 +571,19 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                                                _window_width,
                                                _window_height);
                 c[ix][iy][imgr]->SetGrid(_grid_x,_grid_y); // grid
-                if (mgraphs[ix][iy][imgr]->GetListOfGraphs() != 0) mgraphs[ix][iy][imgr]->Draw("A");
+                
+                
+                if (mgraphs[ix][iy][imgr]->GetListOfGraphs() != 0) {
+	                if (dyMin[iy] != -99999) {
+						mgraphs[ix][iy][imgr]->SetMinimum(dyMin[iy]);						
+					}
+	                if (dyMax[iy] != -99999) {
+						mgraphs[ix][iy][imgr]->SetMaximum(dyMax[iy]);
+					}				
+					mgraphs[ix][iy][imgr]->Draw("A");
+				}
                 if (imgr == 0 && _legend) legend->Draw(); // only for the tracker
-                if (_print) c[ix][iy][imgr]->Print(_output_directory + mgraphs[ix][iy][imgr]->GetName() + ExtensionFromPrintOption(_print_option), _print_option);
-
-//                // setting ranges
-//#ifdef DEBUG
-//                cout << __FILE__ << ":" << __LINE__ << ":Info: setting X-axis range of " << mgraphs[ix][iy][imgr]->GetName() << endl;
-//#endif
-//                mgraphs[ix][iy][imgr]->GetXaxis()->SetLimits   ( left_margin_factor*_min[x[ix]],
-//                                                                right_margin_factor*_max[x[ix]]); // for X axis, use SetLimits
-//#ifdef DEBUG
-//                cout << __FILE__ << ":" << __LINE__ << ":Info: setting Y-axis range of " << graphs[ix][iy][imgr]->GetName() << endl;
-//#endif
-//                mgraphs[ix][iy][imgr]->GetYaxis()->SetRangeUser(lower_margin_factor*_min[y[iy]],
-//                                                                upper_margin_factor*_max[y[iy]]); // for Y axis, use SetRangeUser
+                if (_print && _print_only_global != "true") c[ix][iy][imgr]->Print(_output_directory + mgraphs[ix][iy][imgr]->GetName() + ExtensionFromPrintOption(_print_option), _print_option);
 
                 // writing into root file
                 if (_write) mgraphs[ix][iy][imgr]->Write();
@@ -513,11 +592,21 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
                 c_global[imgr]->cd(INDEX_IN_GLOBAL_CANVAS(ix,iy)); 
                 c_global[imgr]->GetPad(INDEX_IN_GLOBAL_CANVAS(ix,iy))->SetFillStyle(4000); //  make the pad transparent
                 c_global[imgr]->GetPad(INDEX_IN_GLOBAL_CANVAS(ix,iy))->SetGrid(_grid_x,_grid_y); // grid
-                if (mgraphs[ix][iy][imgr]->GetListOfGraphs() != 0) mgraphs[ix][iy][imgr]->Draw("A");
+                if (mgraphs[ix][iy][imgr]->GetListOfGraphs() != 0) {
+	                if (dyMin[iy] != -99999) {
+						mgraphs[ix][iy][imgr]->SetMinimum(dyMin[iy]);						
+					}
+	                if (dyMax[iy] != -99999) {
+						mgraphs[ix][iy][imgr]->SetMaximum(dyMax[iy]);
+					}
+					mgraphs[ix][iy][imgr]->Draw("A");
+				}
                 // printing will be performed after customisation (e.g. legend or title) just after the loops on ix and iy
             }
         } // end of loop on y
     }     // end of loop on x
+	
+    
 
     // CUSTOMISATION
     gStyle->SetOptTitle(0); // otherwise, the title is repeated in every pad of the global canvases
@@ -548,15 +637,27 @@ void GeometryComparisonPlotter::MakePlots (vector<TString> x, // axes to combine
         p_up->cd();
         if (ic == 0) // tracker
         {
-            TLegend * global_legend = MakeLegend(.05,.1,.95,.8);//, "brNDC");
+            TLegend * global_legend = MakeLegend(.05,.1,.7,.8);//, "brNDC");
             global_legend->Draw();
+            TPaveText * pt_geom = new TPaveText(.75,.1,.95,.8, "NB");
+            pt_geom->SetFillColor(0);
+            pt_geom->SetTextSize(0.25);
+            pt_geom->AddText(TString("x: ")+_alignment_name);
+            pt_geom->AddText(TString("y: ")+_alignment_name+TString(" - ")+_reference_name);
+            pt_geom->Draw();
         }
         else         // sublevels
         {
-            TPaveText * pt = new TPaveText(.05,.1,.95,.8, "NB");
+            TPaveText * pt = new TPaveText(.05,.1,.7,.8, "NB");
             pt->SetFillColor(0);
             pt->AddText(_sublevel_names[ic-1]);
             pt->Draw();
+            TPaveText * pt_geom = new TPaveText(.6,.1,.95,.8, "NB");
+            pt_geom->SetFillColor(0);
+            pt_geom->SetTextSize(0.3);
+            pt_geom->AddText(TString("x: ")+_alignment_name);
+            pt_geom->AddText(TString("y: ")+_alignment_name+TString(" - ")+_reference_name);
+            pt_geom->Draw();
         }
         // printing
         if (_print) c_global[ic]->Print(_output_directory + c_global[ic]->GetName() + ExtensionFromPrintOption(_print_option), _print_option);

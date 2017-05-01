@@ -1,19 +1,31 @@
-import os
 import configTemplates
-from helperFunctions import replaceByMap
+from helperFunctions import replaceByMap, parsecolor, parsestyle
+import os
 from TkAlExceptions import AllInOneError
 
 class Alignment:
     def __init__(self, name, config, runGeomComp = "1"):
         self.condShorts = {
-            "TrackerAlignmentErrorExtendedRcd":
-                {"zeroAPE":{"connectString": ("frontier://FrontierProd"
-                                              "/CMS_COND_31X_FROM21X"),
-                            "tagName": "TrackerIdealGeometryErrors210_mc",
-                            "labelName": ""}}}
+            "TrackerAlignmentErrorExtendedRcd": {
+                "zeroAPE": {
+                    "connectString":("frontier://FrontierProd"
+                                             "/CMS_CONDITIONS"),
+                    "tagName": "TrackerIdealGeometryErrorsExtended210_mc",
+                    "labelName": ""
+                }
+            },
+            "TrackerSurfaceDeformationRcd": {
+                "zeroDeformations": {
+                    "connectString":("frontier://FrontierProd"
+                                             "/CMS_CONDITIONS"),
+                    "tagName": "TrackerSurfaceDeformations_zero",
+                    "labelName": ""
+                }
+            },
+        }
         section = "alignment:%s"%name
         if not config.has_section( section ):
-            raise AllInOneError, ("section %s not found. Please define the "
+            raise AllInOneError("section %s not found. Please define the "
                                   "alignment!"%section)
         config.checkInput(section,
                           knownSimpleOptions = ['globaltag', 'style', 'color', 'title'],
@@ -23,15 +35,21 @@ class Alignment:
             self.title = config.get(section,"title")
         else:
             self.title = self.name
+        if (int(runGeomComp) != 1):
+            self.name += "_run" + runGeomComp
+            self.title += " run " + runGeomComp
         if "|" in self.title or "," in self.title or '"' in self.title:
             msg = "The characters '|', '\"', and ',' cannot be used in the alignment title!"
             raise AllInOneError(msg)
         self.runGeomComp = runGeomComp
         self.globaltag = config.get( section, "globaltag" )
         self.conditions = self.__getConditions( config, section )
+
         self.color = config.get(section,"color")
         self.style = config.get(section,"style")
 
+        self.color = str(parsecolor(self.color))
+        self.style = str(parsestyle(self.style))
         
     def __shorthandExists(self, theRcdName, theShorthand):
         """Method which checks, if `theShorthand` is a valid shorthand for the

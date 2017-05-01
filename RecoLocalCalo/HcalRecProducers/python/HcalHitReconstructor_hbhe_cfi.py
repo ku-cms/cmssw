@@ -1,7 +1,9 @@
 import FWCore.ParameterSet.Config as cms
+import RecoLocalCalo.HcalRecProducers.HBHEMethod3Parameters_cfi as method3
 
 hbheprereco = cms.EDProducer(
     "HcalHitReconstructor",
+    method3.m3Parameters,
     correctionPhaseNS = cms.double(6.0),
     digiLabel = cms.InputTag("hcalDigis"),
     Subdetector = cms.string('HBHE'),
@@ -31,7 +33,9 @@ hbheprereco = cms.EDProducer(
     setTimingShapedCutsFlags  = cms.bool(True),
     setTimingTrustFlags       = cms.bool(False), # timing flags currently only implemented for HF
     setPulseShapeFlags        = cms.bool(True),
-    setNegativeFlags          = cms.bool(True), # only in HBHE
+
+    # Enable negative energy filter
+    setNegativeFlags          = cms.bool(True),
 
     flagParameters= cms.PSet(nominalPedestal=cms.double(3.0),  #fC
                              hitEnergyMinimum=cms.double(1.0), #GeV
@@ -58,6 +62,12 @@ hbheprereco = cms.EDProducer(
 
     pulseShapeParameters = cms.PSet(MinimumChargeThreshold = cms.double(20),
                                     TS4TS5ChargeThreshold = cms.double(70),
+                                    TS3TS4ChargeThreshold = cms.double(70),
+                                    TS3TS4UpperChargeThreshold = cms.double(20),
+                                    TS5TS6ChargeThreshold = cms.double(70),
+                                    TS5TS6UpperChargeThreshold = cms.double(20),
+                                    R45PlusOneRange = cms.double(0.2),
+                                    R45MinusOneRange = cms.double(0.2),
                                     TrianglePeakTS = cms.uint32(4),
                                     LinearThreshold = cms.vdouble(20, 100, 100000),
                                     LinearCut = cms.vdouble(-3, -0.054, -0.054),
@@ -76,13 +86,6 @@ hbheprereco = cms.EDProducer(
                                     TS4TS5LowerCut = cms.vdouble(-1, -0.7, -0.5, -0.4, -0.3, 0.1),
                                     UseDualFit = cms.bool(True),
                                     TriangleIgnoreSlow = cms.bool(False)),
-
-    negativeParameters = cms.PSet(MinimumChargeThreshold = cms.double(20),
-                                  TS4TS5ChargeThreshold = cms.double(70),
-                                  First = cms.int32(4),
-                                  Last = cms.int32(6),
-                                  Threshold = cms.vdouble(100, 120, 160, 200, 300, 500, 1.0e4),
-                                  Cut = cms.vdouble(-50, -100, -100, -100, -100, -100, -1.0e6)),
 
     # shaped cut parameters are triples of (energy, low time threshold, high time threshold) values.
     # The low and high thresholds must straddle zero (i.e., low<0, high>0); use win_offset to shift.
@@ -120,19 +123,19 @@ hbheprereco = cms.EDProducer(
     applyPulseJitter      = cms.bool(False),  
     applyUnconstrainedFit = cms.bool(False),   #Turn on original Method 2
     applyTimeSlew         = cms.bool(True),   #units
-    ts4Min                = cms.double(5.),   #fC
-    ts4Max                = cms.double(500.),   #fC
+    ts4Min                = cms.double(0.),   #fC
+    ts4Max                = cms.double(100.),   #fC
     pulseJitter           = cms.double(1.),   #GeV/bin
-    meanTime              = cms.double(-5.5), #ns
+    meanTime              = cms.double(0.), #ns
     timeSigma             = cms.double(5.),  #ns
     meanPed               = cms.double(0.),   #GeV
     pedSigma              = cms.double(0.5),  #GeV
     noise                 = cms.double(1),    #fC
-    timeMin               = cms.double(-18),  #ns
-    timeMax               = cms.double( 7),  #ns
+    timeMin               = cms.double(-12.5),  #ns
+    timeMax               = cms.double(12.5),  #ns
     ts3chi2               = cms.double(5.),   #chi2 (not used)
     ts4chi2               = cms.double(15.),  #chi2 for triple pulse 
     ts345chi2             = cms.double(100.), #chi2 (not used)
     chargeMax             = cms.double(6.),    #Charge cut (fC) for uncstrianed Fit 
     fitTimes              = cms.int32(1)       # -1 means no constraint on number of fits per channel
-    )
+)

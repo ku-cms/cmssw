@@ -38,21 +38,23 @@ scriptTemplate="""
 #ulimit -v 3072000
 #export STAGE_SVCCLASS=cmscafuser
 #save path to the LSF batch working directory  (/pool/lsf)
+
 export LSFWORKDIR=`pwd -P`
 echo LSF working directory is $LSFWORKDIR
 source /afs/cern.ch/cms/caf/setup.sh
+eos='/afs/cern.ch/project/eos/installation/cms/bin/eos.select'
 cd .oO[CMSSW_BASE]Oo./src
 export SCRAM_ARCH=.oO[SCRAM_ARCH]Oo.
 eval `scramv1 ru -sh`
-rfmkdir -p .oO[datadir]Oo. &>! /dev/null
+#rfmkdir -p .oO[datadir]Oo. &>! /dev/null
 
 #remove possible result file from previous runs
-previous_results=$(cmsLs -l /store/caf/user/$USER/.oO[eosdir]Oo. | awk '{print $5}')
+previous_results=$($eos ls /store/caf/user/$USER/.oO[eosdir]Oo.)
 for file in ${previous_results}
 do
     if [ ${file} = /store/caf/user/$USER/.oO[eosdir]Oo./.oO[outputFile]Oo. ]
     then
-        cmsStage -f ${file} ${file}.bak
+        xrdcp -f root://eoscms//eos/cms${file} root://eoscms//eos/cms${file}.bak
     fi
 done
 
@@ -86,7 +88,7 @@ gzip -f LOGFILE_*_.oO[name]Oo..log
 find . -maxdepth 1 -name "LOGFILE*.oO[alignmentName]Oo.*" -print | xargs -I {} bash -c "rfcp {} .oO[logdir]Oo."
 
 #copy root files to eos
-cmsMkdir /store/caf/user/$USER/.oO[eosdir]Oo.
+$eos mkdir -p /store/caf/user/$USER/.oO[eosdir]Oo.
 if [ .oO[parallelJobs]Oo. -eq 1 ]
 then
     root_files=$(ls --color=never -d *.oO[alignmentName]Oo.*.root)
@@ -97,7 +99,7 @@ echo ${root_files}
 
 for file in ${root_files}
 do
-    cmsStage -f ${file} /store/caf/user/$USER/.oO[eosdir]Oo.
+    xrdcp -f ${file} root://eoscms//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo.
     echo ${file}
 done
 
@@ -114,6 +116,7 @@ echo "done."
 ######################################################################
 mergeTemplate="""
 #!/bin/bash
+eos='/afs/cern.ch/project/eos/installation/cms/bin/eos.select'
 CWD=`pwd -P`
 cd .oO[CMSSW_BASE]Oo./src
 export SCRAM_ARCH=.oO[SCRAM_ARCH]Oo.
@@ -134,13 +137,13 @@ echo "Working directory: $(pwd -P)"
 
 ###############################################################################
 # download root files from eos
-root_files=$(cmsLs -l /store/caf/user/$USER/.oO[eosdir]Oo. | awk '{print $5}' \
+root_files=$($eos ls /store/caf/user/$USER/.oO[eosdir]Oo. \
              | grep ".root$" | grep -v "result.root$")
-for file in ${root_files}
-do
-    cmsStage -f ${file} .
-    # echo ${file}
-done
+#for file in ${root_files}
+#do
+#    xrdcp -f root://eoscms//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo./${file} .
+#    echo ${file}
+#done
 
 
 #run
@@ -149,6 +152,7 @@ done
 
 .oO[RunExtendedOfflineValidation]Oo.
 .oO[RunTrackSplitPlot]Oo.
+.oO[MergeZmumuPlots]Oo.
 
 # clean-up
 # ls -l *.root
@@ -165,9 +169,6 @@ find . -name "*.stdout" -exec gzip -f {} \;
 ######################################################################
 mergeParallelResults="""
 
-#set directory to which TkAlOfflineJobsMerge.C saves the merged file
-# export OUTPUTDIR=.oO[datadir]Oo.
-export OUTPUTDIR=.
 .oO[copyMergeScripts]Oo.
 .oO[haddLoop]Oo.
 
@@ -184,6 +185,7 @@ ls -al .oO[mergeParallelFilePrefixes]Oo. > .oO[datadir]Oo./log_rootfilelist.txt
 compareAlignmentsExecution="""
 #merge for .oO[validationId]Oo. if it does not exist or is not up-to-date
 echo -e "\n\nComparing validations"
+$eos mkdir -p /store/caf/user/$USER/.oO[eosdir]Oo./
 cp .oO[CMSSW_BASE]Oo./src/Alignment/OfflineValidation/scripts/compareFileAges.C .
 root -x -q -b -l "compareFileAges.C(\\\"root://eoscms.cern.ch//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo./.oO[validationId]Oo._result.root\\\", \\\".oO[compareStringsPlain]Oo.\\\")"
 comparisonNeeded=${?}
@@ -193,10 +195,10 @@ then
     cp .oO[CMSSW_BASE]Oo./src/Alignment/OfflineValidation/scripts/compareAlignments.cc .
     root -x -q -b -l 'compareAlignments.cc++(\".oO[compareStrings]Oo.\")'
     mv result.root .oO[validationId]Oo._result.root
-    cmsStage -f .oO[validationId]Oo._result.root /store/caf/user/$USER/.oO[eosdir]Oo.
+    xrdcp -f .oO[validationId]Oo._result.root root://eoscms//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo.
 else
     echo ".oO[validationId]Oo._result.root is up-to-date, no need to compare again."
-    cmsStage -f /store/caf/user/$USER/.oO[eosdir]Oo./.oO[validationId]Oo._result.root .
+    xrdcp -f root://eoscms//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo./.oO[validationId]Oo._result.root .
 fi
 """
 
@@ -206,56 +208,29 @@ fi
 extendedValidationExecution="""
 #run extended offline validation scripts
 echo -e "\n\nRunning extended offline validation"
-if [[ $HOSTNAME = lxplus[0-9]*\.cern\.ch ]] # check for interactive mode
-then
-    rfmkdir -p .oO[workdir]Oo./ExtendedOfflineValidation_Images
-else
-    mkdir -p ExtendedOfflineValidation_Images
-fi
 
 rfcp .oO[extendedValScriptPath]Oo. .
-rfcp .oO[CMSSW_BASE]Oo./src/Alignment/OfflineValidation/macros/PlotAlignmentValidation.C .
 root -x -b -q -l TkAlExtendedOfflineValidation.C
-rfmkdir -p .oO[datadir]Oo./ExtendedOfflineValidation_Images
 
-if [[ $HOSTNAME = lxplus[0-9]*\.cern\.ch ]] # check for interactive mode
-then
-    image_files=$(ls --color=never | find .oO[workdir]Oo./ExtendedOfflineValidation_Images/ -name \*ps -o -name \*root)
-    echo -e "\n\nProduced plot files:"
-    #echo ${image_files}
-    ls .oO[workdir]Oo./ExtendedOfflineValidation_Images
-else
-    image_files=$(ls --color=never | find ExtendedOfflineValidation_Images/ -name \*ps -o -name \*root)
-    echo -e "\n\nProduced plot files:"
-    #echo ${image_files}
-    ls ExtendedOfflineValidation_Images
-fi
-
-for image in ${image_files}
-do
-    cp ${image} .oO[datadir]Oo./ExtendedOfflineValidation_Images
-done
 """
 
 
 ######################################################################
 ######################################################################
 extendedValidationTemplate="""
+#include ".oO[CMSSW_BASE]Oo./src/Alignment/OfflineValidation/macros/PlotAlignmentValidation.C"
 void TkAlExtendedOfflineValidation()
 {
   // load framework lite just to find the CMSSW libs...
   gSystem->Load("libFWCoreFWLite");
-  AutoLibraryLoader::enable();
-  //compile the makro
-  gROOT->ProcessLine(".L .oO[CMSSW_BASE]Oo./src/Alignment/OfflineValidation/macros/PlotAlignmentValidation.C++");
-  // gROOT->ProcessLine(".L ./PlotAlignmentValidation.C++");
+  FWLiteEnabler::enable();
 
   .oO[extendedInstantiation]Oo.
-  p.setOutputDir("./ExtendedOfflineValidation_Images");
+  p.setOutputDir(".oO[datadir]Oo./ExtendedOfflineValidation_Images");
   p.setTreeBaseDir(".oO[OfflineTreeBaseDir]Oo.");
   p.plotDMR(".oO[DMRMethod]Oo.",.oO[DMRMinimum]Oo.,".oO[DMROptions]Oo.");
   p.plotSurfaceShapes(".oO[SurfaceShapes]Oo.");
-  p.plotChi2(".oO[resultPlotFile]Oo._result.root");
+  p.plotChi2("root://eoscms//eos/cms/store/caf/user/$USER/.oO[eosdir]Oo./.oO[resultPlotFile]Oo._result.root");
 }
 """
 

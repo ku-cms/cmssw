@@ -33,25 +33,25 @@ def simGeoLoad(score):
     elif score == "Ideal2015dev":
        process.load("Geometry.CMSCommonData.cmsIdealGeometry2015devXML_cfi")
 
+    elif score == "RPC4RE11":
+       process.load("Geometry.CMSCommonData.cmsExtendedGeometry2015XML_RPC4RE11_cfi")
+
+    elif score == "2017":
+       process.load('Configuration.Geometry.GeometryExtended2017Reco_cff')
+       
     elif score == "2019":
        process.load('Configuration.Geometry.GeometryExtended2019Reco_cff')
   
     elif score == "PhaseIPixel":
-       process.load('Geometry.CMSCommonData.GeometryExtendedPhaseIPixel_cfi')
+       process.load('Geometry.CMSCommonData.cmsExtendedGeometry2017XML_cfi')
 
-    elif score == "Phase1_R34F16":
-        process.load('Geometry.CMSCommonData.Phase1_R34F16_cmsSimIdealGeometryXML_cff')
  
-    elif score == "Phase2Tk":
-       process.load('Geometry.CMSCommonData.cmsExtendedGeometryPhase2TkBEXML_cfi')
-
     elif score == "2023Muon":
        process.load('Configuration.Geometry.GeometryExtended2023MuonReco_cff')
 
-
-    elif score == "SLHC":
-        process.load('SLHCUpgradeSimulations.Geometry.Phase1_R30F12_HCal_cmsSimIdealGeometryXML_cff')
-        
+    elif score == "2023":
+       process.load('Configuration.Geometry.GeometryExtended2023Reco_cff')
+                
     elif score == "DB":
         process.load("Configuration.StandardSequences.GeometryDB_cff")
         process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
@@ -109,7 +109,7 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1))
 
 process.add_(cms.ESProducer("TGeoMgrFromDdd",
         verbose = cms.untracked.bool(False),
-                            level = cms.untracked.int32(defaultLevel)
+        level = cms.untracked.int32(defaultLevel)
 ))
 
 process.dump = cms.EDAnalyzer("DumpSimGeometry", 

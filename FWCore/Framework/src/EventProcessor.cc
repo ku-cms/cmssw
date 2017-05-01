@@ -56,6 +56,7 @@
 #include "FWCore/Utilities/interface/ExceptionCollector.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Utilities/interface/RootHandlers.h"
+#include "FWCore/Utilities/interface/propagate_const.h"
 
 #include "MessageForSource.h"
 #include "MessageForParent.h"
@@ -86,10 +87,6 @@
 #include <sched.h>
 #endif
 
-//Needed for introspection
-#include "Cintex/Cintex.h"
-
-
 namespace {
   //Sentry class to only send a signal if an
   // exception occurs. An exception is identified
@@ -108,7 +105,8 @@ namespace {
       reg_ = nullptr;
     }
   private:
-    edm::ActivityRegistry* reg_;
+    edm::ActivityRegistry* reg_; // We do not use propagate_const because the registry itself is mutable.
+
     
   };
 }
@@ -119,7 +117,7 @@ namespace edm {
   std::unique_ptr<InputSource>
   makeInput(ParameterSet& params,
             CommonParams const& common,
-            ProductRegistry& preg,
+            std::shared_ptr<ProductRegistry> preg,
             std::shared_ptr<BranchIDListHelper> branchIDListHelper,
             std::shared_ptr<ThinnedAssociationsHelper> thinnedAssociationsHelper,
             std::shared_ptr<ActivityRegistry> areg,
@@ -188,11 +186,11 @@ namespace edm {
   }
 
   // ---------------------------------------------------------------
-  boost::shared_ptr<EDLooperBase>
+  std::shared_ptr<EDLooperBase>
   fillLooper(eventsetup::EventSetupsController& esController,
              eventsetup::EventSetupProvider& cp,
                          ParameterSet& params) {
-    boost::shared_ptr<EDLooperBase> vLooper;
+    std::shared_ptr<EDLooperBase> vLooper;
 
     std::vector<std::string> loopers = params.getParameter<std::vector<std::string> >("@all_loopers");
 
@@ -232,7 +230,7 @@ namespace edm {
     act_table_(),
     processConfiguration_(),
     schedule_(),
-    subProcess_(),
+    subProcesses_(),
     historyAppender_(new HistoryAppender),
     fb_(),
     looper_(),
@@ -273,7 +271,7 @@ namespace edm {
     act_table_(),
     processConfiguration_(),
     schedule_(),
-    subProcess_(),
+    subProcesses_(),
     historyAppender_(new HistoryAppender),
     fb_(),
     looper_(),
@@ -317,7 +315,7 @@ namespace edm {
     act_table_(),
     processConfiguration_(),
     schedule_(),
-    subProcess_(),
+    subProcesses_(),
     historyAppender_(new HistoryAppender),
     fb_(),
     looper_(),
@@ -357,7 +355,7 @@ namespace edm {
     act_table_(),
     processConfiguration_(),
     schedule_(),
-    subProcess_(),
+    subProcesses_(),
     historyAppender_(new HistoryAppender),
     fb_(),
     looper_(),
@@ -400,8 +398,6 @@ namespace edm {
 
     //std::cerr << processDesc->dump() << std::endl;
    
-    ROOT::Cintex::Cintex::Enable();
-
     // register the empty parentage vector , once and for all
     ParentageRegistry::instance()->insertMapped(Parentage());
 
@@ -409,10 +405,10 @@ namespace edm {
     ParameterSet().registerIt();
 
     std::shared_ptr<ParameterSet> parameterSet = processDesc->getProcessPSet();
-    //std::cerr << parameterSet->dump() << std::endl;
 
-    // If there is a subprocess, pop the subprocess parameter set out of the process parameter set
-    std::shared_ptr<ParameterSet> subProcessParameterSet(popSubProcessParameterSet(*parameterSet).release());
+    // If there are subprocesses, pop the subprocess parameter sets out of the process parameter set
+    std::unique_ptr<std::vector<ParameterSet> > subProcessVParameterSet(popSubProcessVParameterSet(*parameterSet));
+    bool hasSubProcesses = subProcessVParameterSet.get() != nullptr;
 
     // Now set some parameters specific to the main process.
     ParameterSet const& optionsPset(parameterSet->getUntrackedParameterSet("options", ParameterSet()));
@@ -519,18 +515,25 @@ namespace edm {
     preallocations_ = PreallocationConfiguration{nThreads,nStreams,nConcurrentLumis,nConcurrentRuns};
 
     // initialize the input source
-    input_ = makeInput(*parameterSet, *common, *items.preg_, items.branchIDListHelper_, items.thinnedAssociationsHelper_, items.actReg_, items.processConfiguration_, preallocations_);
+    input_ = makeInput(*parameterSet,
+                       *common,
+                       items.preg(),
+                       items.branchIDListHelper(),
+                       items.thinnedAssociationsHelper(),
+                       items.actReg_,
+                       items.processConfiguration(),
+                       preallocations_);
 
     // intialize the Schedule
-    schedule_ = items.initSchedule(*parameterSet,subProcessParameterSet.get(),preallocations_,&processContext_);
+    schedule_ = items.initSchedule(*parameterSet,hasSubProcesses,preallocations_,&processContext_);
 
     // set the data members
     act_table_ = std::move(items.act_table_);
     actReg_ = items.actReg_;
-    preg_.reset(items.preg_.release());
-    branchIDListHelper_ = items.branchIDListHelper_;
-    thinnedAssociationsHelper_ = items.thinnedAssociationsHelper_;
-    processConfiguration_ = items.processConfiguration_;
+    preg_ = items.preg();
+    branchIDListHelper_ = items.branchIDListHelper();
+    thinnedAssociationsHelper_ = items.thinnedAssociationsHelper();
+    processConfiguration_ = items.processConfiguration();
     processContext_.setProcessConfiguration(processConfiguration_.get());
     principalCache_.setProcessHistoryRegistry(input_->processHistoryRegistry());
 
@@ -539,24 +542,31 @@ namespace edm {
     principalCache_.setNumberOfConcurrentPrincipals(preallocations_);
     for(unsigned int index = 0; index<preallocations_.numberOfStreams(); ++index ) {
       // Reusable event principal
-      auto ep = std::make_shared<EventPrincipal>(preg_, branchIDListHelper_, thinnedAssociationsHelper_, *processConfiguration_, historyAppender_.get(), index);
+      auto ep = std::make_shared<EventPrincipal>(preg(), branchIDListHelper(),
+           thinnedAssociationsHelper(), *processConfiguration_, historyAppender_.get(), index);
       ep->preModuleDelayedGetSignal_.connect(std::cref(actReg_->preModuleEventDelayedGetSignal_));
       ep->postModuleDelayedGetSignal_.connect(std::cref(actReg_->postModuleEventDelayedGetSignal_));
       principalCache_.insert(ep);
     }
     // initialize the subprocess, if there is one
-    if(subProcessParameterSet) {
-      subProcess_.reset(new SubProcess(*subProcessParameterSet,
-                                       *parameterSet,
-                                       preg_,
-                                       branchIDListHelper_,
-                                       *thinnedAssociationsHelper_,
-                                       *espController_,
-                                       *actReg_,
-                                       token,
-                                       serviceregistry::kConfigurationOverrides,
-                                       preallocations_,
-                                       &processContext_));
+    if(hasSubProcesses) {
+      if(subProcesses_ == nullptr) {
+        subProcesses_ = std::make_unique<std::vector<SubProcess> >();
+      }
+      subProcesses_->reserve(subProcessVParameterSet->size());
+      for(auto& subProcessPSet : *subProcessVParameterSet) { 
+        subProcesses_->emplace_back(subProcessPSet,
+                                    *parameterSet,
+                                    preg(),
+                                    branchIDListHelper(),
+                                    *thinnedAssociationsHelper_,
+                                    *espController_,
+                                    *actReg_,
+                                    token,
+                                    serviceregistry::kConfigurationOverrides,
+                                    preallocations_,
+                                    &processContext_);
+       }
     }
   }
 
@@ -566,13 +576,14 @@ namespace edm {
     ServiceRegistry::Operate op(token);
 
     // manually destroy all these thing that may need the services around
-    espController_.reset();
-    subProcess_.reset();
-    esp_.reset();
-    schedule_.reset();
-    input_.reset();
-    looper_.reset();
-    actReg_.reset();
+    // propagate_const<T> has no reset() function
+    espController_ = nullptr;
+    subProcesses_ = nullptr;
+    esp_ = nullptr;
+    schedule_ = nullptr;
+    input_ = nullptr;
+    looper_ = nullptr;
+    actReg_ = nullptr;
 
     pset::Registry::instance()->clear();
     ParentageRegistry::instance()->clear();
@@ -593,7 +604,7 @@ namespace edm {
                                  preallocations_.numberOfRuns(),
                                  preallocations_.numberOfThreads());
     actReg_->preallocateSignal_(bounds);
-    pathsAndConsumesOfModules_.initialize(schedule_.get(), preg_);
+    pathsAndConsumesOfModules_.initialize(schedule_.get(), preg());
     actReg_->preBeginJobSignal_(pathsAndConsumesOfModules_, processContext_);
 
     //NOTE:  This implementation assumes 'Job' means one call
@@ -621,12 +632,20 @@ namespace edm {
     }
     schedule_->beginJob(*preg_);
     // toerror.succeeded(); // should we add this?
-    if(hasSubProcess()) subProcess_->doBeginJob();
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.doBeginJob();
+      }
+    }
     actReg_->postBeginJobSignal_();
     
     for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
       schedule_->beginStream(i);
-      if(hasSubProcess()) subProcess_->doBeginStream(i);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doBeginStream(i);
+        }
+      }
     }
   }
 
@@ -641,19 +660,23 @@ namespace edm {
     //NOTE: this really should go elsewhere in the future
     for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
       c.call([this,i](){this->schedule_->endStream(i);});
-      if(hasSubProcess()) {
-        c.call([this,i](){ this->subProcess_->doEndStream(i); } );
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          c.call([&subProcess,i](){ subProcess.doEndStream(i); } );
+        }
       }
     }
     auto actReg = actReg_.get();
     c.call([actReg](){actReg->preEndJobSignal_();});
     schedule_->endJob(c);
-    if(hasSubProcess()) {
-      c.call(std::bind(&SubProcess::doEndJob, subProcess_.get()));
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        c.call(std::bind(&SubProcess::doEndJob, &subProcess));
+      }
     }
     c.call(std::bind(&InputSource::doEndJob, input_.get()));
     if(looper_) {
-      c.call(std::bind(&EDLooperBase::endOfJob, looper_));
+      c.call(std::bind(&EDLooperBase::endOfJob, looper()));
     }
     c.call([actReg](){actReg->postEndJobSignal_();});
     if(c.hasThrown()) {
@@ -1313,7 +1336,7 @@ namespace edm {
                 if(size < preg_->size()) {
                   principalCache_.adjustIndexesAfterProductRegistryAddition();
                 }
-                principalCache_.adjustEventsToNewProductRegistry(preg_);
+                principalCache_.adjustEventsToNewProductRegistry(preg());
               }
             }
             {
@@ -1474,7 +1497,7 @@ namespace edm {
     if(size < preg_->size()) {
       principalCache_.adjustIndexesAfterProductRegistryAddition();
     }
-    principalCache_.adjustEventsToNewProductRegistry(preg_);
+    principalCache_.adjustEventsToNewProductRegistry(preg());
     if((numberOfForkedChildren_ > 0) or
        (preallocations_.numberOfStreams()>1 and
         preallocations_.numberOfThreads()>1)) {
@@ -1495,7 +1518,11 @@ namespace edm {
   void EventProcessor::openOutputFiles() {
     if (fb_.get() != nullptr) {
       schedule_->openOutputFiles(*fb_);
-      if(hasSubProcess()) subProcess_->openOutputFiles(*fb_);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.openOutputFiles(*fb_);
+        }
+      }
     }
     FDEBUG(1) << "\topenOutputFiles\n";
   }
@@ -1503,18 +1530,28 @@ namespace edm {
   void EventProcessor::closeOutputFiles() {
     if (fb_.get() != nullptr) {
       schedule_->closeOutputFiles();
-      if(hasSubProcess()) subProcess_->closeOutputFiles();
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.closeOutputFiles();
+        }
+      }
     }
     FDEBUG(1) << "\tcloseOutputFiles\n";
   }
 
   void EventProcessor::respondToOpenInputFile() {
-    if(hasSubProcess()) {
-      subProcess_->updateBranchIDListHelper(branchIDListHelper_->branchIDLists());
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.updateBranchIDListHelper(branchIDListHelper_->branchIDLists());
+      }
     }
     if (fb_.get() != nullptr) {
       schedule_->respondToOpenInputFile(*fb_);
-      if(hasSubProcess()) subProcess_->respondToOpenInputFile(*fb_);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.respondToOpenInputFile(*fb_);
+        }
+      }
     }
     FDEBUG(1) << "\trespondToOpenInputFile\n";
   }
@@ -1522,7 +1559,11 @@ namespace edm {
   void EventProcessor::respondToCloseInputFile() {
     if (fb_.get() != nullptr) {
       schedule_->respondToCloseInputFile(*fb_);
-      if(hasSubProcess()) subProcess_->respondToCloseInputFile(*fb_);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.respondToCloseInputFile(*fb_);
+        }
+      }
     }
     FDEBUG(1) << "\trespondToCloseInputFile\n";
   }
@@ -1563,7 +1604,15 @@ namespace edm {
 
   bool EventProcessor::shouldWeCloseOutput() const {
     FDEBUG(1) << "\tshouldWeCloseOutput\n";
-    return hasSubProcess() ? subProcess_->shouldWeCloseOutput() : schedule_->shouldWeCloseOutput();
+    if(hasSubProcesses()) {
+      for(auto const& subProcess : *subProcesses_) {
+        if(subProcess.shouldWeCloseOutput()) {
+          return true; 
+        }
+      }
+      return false;
+    }
+    return schedule_->shouldWeCloseOutput();
   }
 
   void EventProcessor::doErrorStuff() {
@@ -1606,8 +1655,10 @@ namespace edm {
     {
       typedef OccurrenceTraits<RunPrincipal, BranchActionGlobalBegin> Traits;
       schedule_->processOneGlobal<Traits>(runPrincipal, es);
-      if(hasSubProcess()) {
-        subProcess_->doBeginRun(runPrincipal, ts);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doBeginRun(runPrincipal, ts);
+        }
       }
     }
     FDEBUG(1) << "\tbeginRun " << run.runNumber() << "\n";
@@ -1618,8 +1669,10 @@ namespace edm {
       typedef OccurrenceTraits<RunPrincipal, BranchActionStreamBegin> Traits;
       for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
         schedule_->processOneStream<Traits>(i,runPrincipal, es);
-        if(hasSubProcess()) {
-          subProcess_->doStreamBeginRun(i, runPrincipal, ts);
+        if(hasSubProcesses()) {
+          for(auto& subProcess : *subProcesses_) {
+            subProcess.doStreamBeginRun(i, runPrincipal, ts);
+          }
         }
       }
     }
@@ -1650,8 +1703,10 @@ namespace edm {
       for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
         typedef OccurrenceTraits<RunPrincipal, BranchActionStreamEnd> Traits;
         schedule_->processOneStream<Traits>(i,runPrincipal, es, cleaningUpAfterException);
-        if(hasSubProcess()) {
-          subProcess_->doStreamEndRun(i,runPrincipal, ts, cleaningUpAfterException);
+        if(hasSubProcesses()) {
+          for(auto& subProcess : *subProcesses_) {
+            subProcess.doStreamEndRun(i,runPrincipal, ts, cleaningUpAfterException);
+          }
         }
       }
     }
@@ -1662,8 +1717,10 @@ namespace edm {
     {
       typedef OccurrenceTraits<RunPrincipal, BranchActionGlobalEnd> Traits;
       schedule_->processOneGlobal<Traits>(runPrincipal, es, cleaningUpAfterException);
-      if(hasSubProcess()) {
-        subProcess_->doEndRun(runPrincipal, ts, cleaningUpAfterException);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doEndRun(runPrincipal, ts, cleaningUpAfterException);
+        }
       }
     }
     FDEBUG(1) << "\tendRun " << run.runNumber() << "\n";
@@ -1699,8 +1756,10 @@ namespace edm {
     {
       typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalBegin> Traits;
       schedule_->processOneGlobal<Traits>(lumiPrincipal, es);
-      if(hasSubProcess()) {
-        subProcess_->doBeginLuminosityBlock(lumiPrincipal, ts);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doBeginLuminosityBlock(lumiPrincipal, ts);
+        }
       }
     }
     FDEBUG(1) << "\tbeginLumi " << run << "/" << lumi << "\n";
@@ -1711,8 +1770,10 @@ namespace edm {
       for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
         typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamBegin> Traits;
         schedule_->processOneStream<Traits>(i,lumiPrincipal, es);
-        if(hasSubProcess()) {
-          subProcess_->doStreamBeginLuminosityBlock(i,lumiPrincipal, ts);
+        if(hasSubProcesses()) {
+          for(auto& subProcess : *subProcesses_) {
+            subProcess.doStreamBeginLuminosityBlock(i,lumiPrincipal, ts);
+          }
         }
       }
     }
@@ -1744,8 +1805,10 @@ namespace edm {
       for(unsigned int i=0; i<preallocations_.numberOfStreams();++i) {
         typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamEnd> Traits;
         schedule_->processOneStream<Traits>(i,lumiPrincipal, es, cleaningUpAfterException);
-        if(hasSubProcess()) {
-          subProcess_->doStreamEndLuminosityBlock(i,lumiPrincipal, ts, cleaningUpAfterException);
+        if(hasSubProcesses()) {
+          for(auto& subProcess : *subProcesses_) {
+            subProcess.doStreamEndLuminosityBlock(i,lumiPrincipal, ts, cleaningUpAfterException);
+          }
         }
       }
     }
@@ -1756,8 +1819,10 @@ namespace edm {
     {
       typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalEnd> Traits;
       schedule_->processOneGlobal<Traits>(lumiPrincipal, es, cleaningUpAfterException);
-      if(hasSubProcess()) {
-        subProcess_->doEndLuminosityBlock(lumiPrincipal, ts, cleaningUpAfterException);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doEndLuminosityBlock(lumiPrincipal, ts, cleaningUpAfterException);
+        }
       }
     }
     FDEBUG(1) << "\tendLumi " << run << "/" << lumi << "\n";
@@ -1773,7 +1838,7 @@ namespace edm {
         << "Illegal attempt to insert run into cache\n"
         << "Contact a Framework Developer\n";
     }
-    auto rp = std::make_shared<RunPrincipal>(input_->runAuxiliary(), preg_, *processConfiguration_, historyAppender_.get(), 0);
+    auto rp = std::make_shared<RunPrincipal>(input_->runAuxiliary(), preg(), *processConfiguration_, historyAppender_.get(), 0);
     {
       SendSourceTerminationSignalIfException sentry(actReg_.get());
       input_->readRun(*rp, *historyAppender_);
@@ -1785,7 +1850,7 @@ namespace edm {
   }
 
   statemachine::Run EventProcessor::readAndMergeRun() {
-    principalCache_.merge(input_->runAuxiliary(), preg_);
+    principalCache_.merge(input_->runAuxiliary(), preg());
     auto runPrincipal =principalCache_.runPrincipalPtr();
     {
       SendSourceTerminationSignalIfException sentry(actReg_.get());
@@ -1810,7 +1875,7 @@ namespace edm {
         << "Run is invalid\n"
         << "Contact a Framework Developer\n";
     }
-    auto lbp = std::make_shared<LuminosityBlockPrincipal>(input_->luminosityBlockAuxiliary(), preg_, *processConfiguration_, historyAppender_.get(), 0);
+    auto lbp = std::make_shared<LuminosityBlockPrincipal>(input_->luminosityBlockAuxiliary(), preg(), *processConfiguration_, historyAppender_.get(), 0);
     {
       SendSourceTerminationSignalIfException sentry(actReg_.get());
       input_->readLuminosityBlock(*lbp, *historyAppender_);
@@ -1822,7 +1887,7 @@ namespace edm {
   }
 
   int EventProcessor::readAndMergeLumi() {
-    principalCache_.merge(input_->luminosityBlockAuxiliary(), preg_);
+    principalCache_.merge(input_->luminosityBlockAuxiliary(), preg());
     {
       SendSourceTerminationSignalIfException sentry(actReg_.get());
       input_->readAndMergeLumi(*principalCache_.lumiPrincipalPtr());
@@ -1833,25 +1898,41 @@ namespace edm {
 
   void EventProcessor::writeRun(statemachine::Run const& run) {
     schedule_->writeRun(principalCache_.runPrincipal(run.processHistoryID(), run.runNumber()), &processContext_);
-    if(hasSubProcess()) subProcess_->writeRun(run.processHistoryID(), run.runNumber());
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.writeRun(run.processHistoryID(), run.runNumber());
+      }
+    }
     FDEBUG(1) << "\twriteRun " << run.runNumber() << "\n";
   }
 
   void EventProcessor::deleteRunFromCache(statemachine::Run const& run) {
     principalCache_.deleteRun(run.processHistoryID(), run.runNumber());
-    if(hasSubProcess()) subProcess_->deleteRunFromCache(run.processHistoryID(), run.runNumber());
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.deleteRunFromCache(run.processHistoryID(), run.runNumber());
+      }
+    }
     FDEBUG(1) << "\tdeleteRunFromCache " << run.runNumber() << "\n";
   }
 
   void EventProcessor::writeLumi(ProcessHistoryID const& phid, RunNumber_t run, LuminosityBlockNumber_t lumi) {
     schedule_->writeLumi(principalCache_.lumiPrincipal(phid, run, lumi), &processContext_);
-    if(hasSubProcess()) subProcess_->writeLumi(phid, run, lumi);
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.writeLumi(phid, run, lumi);
+      }
+    }
     FDEBUG(1) << "\twriteLumi " << run << "/" << lumi << "\n";
   }
 
   void EventProcessor::deleteLumiFromCache(ProcessHistoryID const& phid, RunNumber_t run, LuminosityBlockNumber_t lumi) {
     principalCache_.deleteLumi(phid, run, lumi);
-    if(hasSubProcess()) subProcess_->deleteLumiFromCache(phid, run, lumi);
+    if(hasSubProcesses()) {
+      for(auto& subProcess : *subProcesses_) {
+        subProcess.deleteLumiFromCache(phid, run, lumi);
+      }
+    }
     FDEBUG(1) << "\tdeleteLumiFromCache " << run << "/" << lumi << "\n";
   }
 
@@ -1872,10 +1953,10 @@ namespace edm {
       return nullptr;
     }
   private:
-    EventProcessor* m_proc;
+    edm::propagate_const<EventProcessor*> m_proc;
     unsigned int m_streamID;
-    std::atomic<bool>* m_finishedProcessingEvents;
-    tbb::task* m_waitTask;
+    edm::propagate_const<std::atomic<bool>*> m_finishedProcessingEvents;
+    edm::propagate_const<tbb::task*> m_waitTask;
   };
   
   void EventProcessor::processEventsForStreamAsync(unsigned int iStreamIndex,
@@ -2015,8 +2096,10 @@ namespace edm {
     {
       typedef OccurrenceTraits<EventPrincipal, BranchActionStreamBegin> Traits;
       schedule_->processOneEvent<Traits>(iStreamIndex,*pep, es);
-      if(hasSubProcess()) {
-        subProcess_->doEvent(*pep);
+      if(hasSubProcesses()) {
+        for(auto& subProcess : *subProcesses_) {
+          subProcess.doEvent(*pep);
+        }
       }
     }
 
@@ -2055,7 +2138,15 @@ namespace edm {
   bool EventProcessor::shouldWeStop() const {
     FDEBUG(1) << "\tshouldWeStop\n";
     if(shouldWeStop_) return true;
-    return (schedule_->terminate() || (hasSubProcess() && subProcess_->terminate()));
+    if(hasSubProcesses()) {
+      for(auto const& subProcess : *subProcesses_) {
+        if(subProcess.terminate()) {
+          return true; 
+        }
+      }
+      return false;
+    }
+    return schedule_->terminate();
   }
 
   void EventProcessor::setExceptionMessageFiles(std::string& message) {

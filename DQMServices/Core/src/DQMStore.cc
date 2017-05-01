@@ -1,4 +1,3 @@
-#include "FWCore/ServiceRegistry/interface/SystemBounds.h"
 #include "DQMServices/Core/interface/Standalone.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/QReport.h"
@@ -20,7 +19,10 @@
 #include <iterator>
 #include <cerrno>
 #include <boost/algorithm/string.hpp>
+
 #include <fstream>
+#include <sstream>
+#include <exception>
 
 /** @var DQMStore::verbose_
     Universal verbose flag for DQM. */
@@ -303,6 +305,20 @@ MonitorElement * DQMStore::IGetter::get(const std::string &path) {
   return owner_->get(path);
 }
 
+MonitorElement * DQMStore::IGetter::getElement(const std::string &path) {
+    MonitorElement *ptr = this->get(path);
+    if (ptr == nullptr) {
+      std::stringstream msg;
+      msg << "DQM object not found";
+        
+      msg << ": " << path;
+
+      // can't use cms::Exception inside DQMStore
+      throw std::out_of_range(msg.str());
+    }
+    return ptr;
+}
+
 std::vector<std::string> DQMStore::IGetter::getSubdirs(void) {
   return owner_->getSubdirs();
 }
@@ -369,8 +385,11 @@ void DQMStore::mergeAndResetMEsRunSummaryCache(uint32_t run,
       continue;
     }
 
-    MonitorElement global_me(*i);
+    // don't call the copy constructor
+    // we are just searching for a global histogram - a copy is not necessary
+    MonitorElement global_me(*i, MonitorElementNoCloneTag());
     global_me.globalize();
+
     // Since this accesses the data, the operation must be
     // be locked.
     std::lock_guard<std::mutex> guard(book_mutex_);
@@ -381,13 +400,26 @@ void DQMStore::mergeAndResetMEsRunSummaryCache(uint32_t run,
 
       //don't take any action if the ME is an INT || FLOAT || STRING
       if(me->kind() >= MonitorElement::DQM_KIND_TH1F)
-        me->getTH1()->Add(i->getTH1());
-
+	{
+	  if(me->getTH1()->CanExtendAllAxes() && i->getTH1()->CanExtendAllAxes()) {
+	    TList list;
+	    list.Add(i->getTH1());
+	    if( -1 == me->getTH1()->Merge(&list)) {
+	      std::cout << "mergeAndResetMEsRunSummaryCache: Failed to merge DQM element "<<me->getFullname();
+	    }
+	  }
+	  else
+	    me->getTH1()->Add(i->getTH1());
+	}
     } else {
       if (verbose_ > 1)
         std::cout << "No global Object found. " << std::endl;
       std::pair<std::set<MonitorElement>::const_iterator, bool> gme;
-      gme = data_.insert(global_me);
+
+      // this makes an actual and a single copy with Clone()'ed th1
+      MonitorElement actual_global_me(*i);
+      actual_global_me.globalize();
+      gme = data_.insert(std::move(actual_global_me));
       assert(gme.second);
     }
     // TODO(rovere): eventually reset the local object and mark it as reusable??
@@ -421,7 +453,7 @@ void DQMStore::mergeAndResetMEsLuminositySummaryCache(uint32_t run,
       continue;
     }
 
-    MonitorElement global_me(*i);
+    MonitorElement global_me(*i, MonitorElementNoCloneTag());
     global_me.globalize();
     global_me.setLumi(lumi);
     // Since this accesses the data, the operation must be
@@ -433,30 +465,33 @@ void DQMStore::mergeAndResetMEsLuminositySummaryCache(uint32_t run,
 	      std::cout << "Found global Object, using it --> " << me->getFullname() << std::endl;
 
       //don't take any action if the ME is an INT || FLOAT || STRING
-      if (me->kind() >= MonitorElement::DQM_KIND_TH1F)
-        me->getTH1()->Add(i->getTH1());
+      if(me->kind() >= MonitorElement::DQM_KIND_TH1F)
+	{
+	  if(me->getTH1()->CanExtendAllAxes() && i->getTH1()->CanExtendAllAxes()) {
+	    TList list;
+	    list.Add(i->getTH1());
+	    if( -1 == me->getTH1()->Merge(&list)) {
+	      std::cout << "mergeAndResetMEsLuminositySummaryCache: Failed to merge DQM element "<<me->getFullname();
+	    }
+	  }
+	  else
+	    me->getTH1()->Add(i->getTH1());
+	}
     } else {
       if (verbose_ > 1)
         std::cout << "No global Object found. " << std::endl;
       std::pair<std::set<MonitorElement>::const_iterator, bool> gme;
-      gme = data_.insert(global_me);
+
+      // this makes an actual and a single copy with Clone()'ed th1
+      MonitorElement actual_global_me(*i);
+      actual_global_me.globalize();
+      actual_global_me.setLumi(lumi);
+      gme = data_.insert(std::move(actual_global_me));
       assert(gme.second);
     }
     // make the ME reusable for the next LS
     const_cast<MonitorElement*>(&*i)->Reset();
     ++i;
-    
-    // check and remove the global lumi based histo belonging to the previous LSs
-    // if properly flagged as DQMNet::DQM_PROP_MARKTODELETE
-    global_me.setLumi(1);
-    std::set<MonitorElement>::const_iterator i_lumi = data_.lower_bound(global_me);
-    while (i_lumi->data_.lumi != lumi) {
-      auto temp = i_lumi++;
-      if (i_lumi->getFullname() == i->getFullname() &&  i_lumi->markedToDelete())
-	{
-	  data_.erase(temp);
-	}
-    }
   }
 }
 
@@ -599,7 +634,7 @@ DQMStore::print_trace (const std::string &dir, const std::string &name)
   // concurrency problems because the print_trace method is always called behind
   // a lock (see bookTransaction).
   if (!stream_)
-    stream_ = new ofstream("histogramBookingBT.log");
+    stream_ = new std::ofstream("histogramBookingBT.log");
   
   void *array[10];
   size_t size;
@@ -798,7 +833,7 @@ DQMStore::book(const std::string &dir, const std::string &name,
     // Create and initialise core object.
     assert(dirs_.count(dir));
     MonitorElement proto(&*dirs_.find(dir), name, run_, streamId_, moduleId_);
-    me = const_cast<MonitorElement &>(*data_.insert(proto).first)
+    me = const_cast<MonitorElement &>(*data_.insert(std::move(proto)).first)
       .initialise((MonitorElement::Kind)kind, h);
 
     // Initialise quality test information.
@@ -810,17 +845,24 @@ DQMStore::book(const std::string &dir, const std::string &name,
                 me->addQReport(qi->second);
     }
 
-    // Assign reference if we have one.
+    // If we just booked a (plain) MonitorElement, and there is a reference
+    // MonitorElement with the same name, link the two together.
+    // The other direction is handled by the extract method.
     std::string refdir;
-    refdir.reserve(s_referenceDirName.size() + dir.size() + 2);
+    refdir.reserve(s_referenceDirName.size() + dir.size() + 1);
     refdir += s_referenceDirName;
     refdir += '/';
     refdir += dir;
-
-    if (findObject(refdir, name))
-    {
+    MonitorElement* referenceME = findObject(refdir, name); 
+    if (referenceME) {
+      // We have booked a new MonitorElement with a specific dir and name.
+      // Then, if we can find the corresponding MonitorElement in the reference
+      // dir we assign the object_ of the reference MonitorElement to the 
+      // reference_ property of our new MonitorElement.
       me->data_.flags |= DQMNet::DQM_PROP_HAS_REFERENCE;
+      me->reference_ = referenceME->object_;
     }
+
     // Return the monitor element.
     return me;
   }
@@ -855,7 +897,7 @@ DQMStore::book(const std::string &dir,
     // Create it and return for initialisation.
     assert(dirs_.count(dir));
     MonitorElement proto(&*dirs_.find(dir), name, run_, streamId_, moduleId_);
-    return &const_cast<MonitorElement &>(*data_.insert(proto).first);
+    return &const_cast<MonitorElement &>(*data_.insert(std::move(proto)).first);
   }
 }
 
@@ -1971,6 +2013,17 @@ DQMStore::getAllContents(const std::string &path,
     }
     result.push_back(const_cast<MonitorElement *>(&*i));
   }
+
+  if (enableMultiThread_)
+    {
+      //save legacy modules when running MT
+      i = data_.begin();
+      for ( ; i != e && isSubdirectory(*cleaned, *i->data_.dirname); ++i) {
+        if (i->data_.run != 0 || i->data_.streamId != 0 || i->data_.moduleId != 0) break;
+        result.push_back(const_cast<MonitorElement *>(&*i));
+      }
+    }
+
   return result;
 }
 
@@ -2056,40 +2109,46 @@ DQMStore::forceReset(void)
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
-/** Mark a set of histograms for deletion based on run, lumi and path*/
+/** Delete *global* histograms which are no longer in used.
+ * Such histograms are created at the end of each lumi and should be
+ * deleted after last globalEndLuminosityBlock.
+ */
 void
-DQMStore::markForDeletion(uint32_t run,
-			  uint32_t lumi)
+DQMStore::deleteUnusedLumiHistograms(uint32_t run, uint32_t lumi)
 {
+  if (!enableMultiThread_)
+    return;
+  
+  std::lock_guard<std::mutex> guard(book_mutex_);
 
   std::string null_str("");
-  MonitorElement proto(&null_str, null_str, run, 0, 0);
-  if (enableMultiThread_)
-    proto.setLumi(lumi);
+  MonitorElement proto(&null_str, null_str, run, 0, 0);  
+  proto.setLumi(lumi);
 
   std::set<MonitorElement>::const_iterator e = data_.end();
   std::set<MonitorElement>::const_iterator i = data_.lower_bound(proto);
   
   while (i != e) {
     if (i->data_.streamId != 0 ||
-	i->data_.moduleId != 0)
+        i->data_.moduleId != 0)
       break;
-    if ((i->data_.lumi != lumi) && enableMultiThread_)
+    if (i->data_.lumi != lumi)
       break;
     if (i->data_.run != run)
       break;
     
-    const_cast<MonitorElement*>(&*i)->markToDelete();  
-    
-    if (verbose_ > 1)
-      std::cout << "DQMStore::markForDeletion: marked monitor element '"
-		<< *i->data_.dirname << "/" << i->data_.objname << "'"
-		<< "flags " << i->data_.flags << "\n";
-
+    auto temp = i;
     ++i;
+
+    if (verbose_ > 1) {
+      std::cout << "DQMStore::deleteUnusedLumiHistograms: deleted monitor element '"
+                << *i->data_.dirname << "/" << i->data_.objname << "'"
+                << "flags " << i->data_.flags << "\n";
+    } 
+
+    data_.erase(temp);
   }
 }
-
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -2373,14 +2432,19 @@ DQMStore::extract(TObject *obj, const std::string &dir,
     return false;
   }
 
-  // If we just read in a reference monitor element, and there is a
-  // monitor element with the same name, link the two together. The
-  // other direction is handled by the initialise() method.
+  // If we just read in a reference MonitorElement, and there is a
+  // MonitorElement with the same name, link the two together.
+  // The other direction is handled by the book() method.
   if (refcheck && isSubdirectory(s_referenceDirName, dir))
   {
     std::string mdir(dir, s_referenceDirName.size()+1, std::string::npos);
     if (MonitorElement *master = findObject(mdir, obj->GetName()))
     {
+      // We have extracted a MonitorElement, and it's located in the reference
+      // dir. Then we find the corresponding MonitorElement in the
+      // non-reference dir and assign the object_ of the reference
+      // MonitorElement to the reference_ property of the corresponding
+      // non-reference MonitorElement.
       master->data_.flags |= DQMNet::DQM_PROP_HAS_REFERENCE;
       master->reference_ = refcheck->object_;
     }
@@ -2444,6 +2508,8 @@ void DQMStore::savePB(const std::string &filename,
   using google::protobuf::io::FileOutputStream;
   using google::protobuf::io::GzipOutputStream;
   using google::protobuf::io::StringOutputStream;
+
+  std::lock_guard<std::mutex> guard(book_mutex_);
 
   std::set<std::string>::iterator di, de;
   MEMap::iterator mi, me = data_.end();
@@ -2574,6 +2640,8 @@ DQMStore::save(const std::string &filename,
                const std::string &fileupdate /* = RECREATE */,
 	       const bool resetMEsAfterWriting /* = false */)
 {
+  std::lock_guard<std::mutex> guard(book_mutex_);
+
   std::set<std::string>::iterator di, de;
   MEMap::iterator mi, me = data_.end();
   DQMNet::QReports::const_iterator qi, qe;
@@ -3179,11 +3247,11 @@ DQMStore::removeElement(const std::string &dir, const std::string &name, bool wa
 {
   MonitorElement proto(&dir, name);
   MEMap::iterator pos = data_.find(proto);
-  if (pos == data_.end() && warning)
+  if (pos != data_.end())
+    data_.erase(pos);
+  else if (warning)
     std::cout << "DQMStore: WARNING: attempt to remove non-existent"
               << " monitor element '" << name << "' in '" << dir << "'\n";
-  else
-    data_.erase(pos);
 }
 
 //////////////////////////////////////////////////////////////////////

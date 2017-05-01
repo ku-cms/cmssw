@@ -18,6 +18,8 @@ Implementation:
 //____________________________________________________________________________||
 #include "CondFormats/JetMETObjects/interface/JetResolution.h"
 
+#include "JetMETCorrections/Modules/interface/JetResolution.h"
+
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/METReco/interface/MET.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
@@ -36,24 +38,25 @@ namespace metsig {
          ~METSignificance();
 
          reco::METCovMatrix getCovariance(const edm::View<reco::Jet>& jets,
-					  const std::vector<reco::Candidate::LorentzVector>& leptons,
-					  const edm::View<reco::Candidate>& pfCandidates);
+					  const std::vector< edm::Handle<reco::CandidateView> >& leptons,
+					  const edm::View<reco::Candidate>& pfCandidates,
+					  double rho,
+					  JME::JetResolution & resPtObj,
+					  JME::JetResolution & resPhiObj,
+					  JME::JetResolutionScaleFactor & resSFObj,
+					  bool isRealData);
+
      double getSignificance(const reco::METCovMatrix& cov, const reco::MET& met ) const;
 
       private:
-         std::vector<reco::Jet> cleanJets(const edm::View<reco::Jet>& jets, 
-					  const std::vector<reco::Candidate::LorentzVector>& leptons);
          bool cleanJet(const reco::Jet& jet, 
-		   const std::vector<reco::Candidate::LorentzVector>& leptons);
+         const std::vector< edm::Handle<reco::CandidateView> >& leptons );
 
          double jetThreshold_;
          double dR2match_;
          std::vector<double> jetEtas_;
          std::vector<double> jetParams_;
          std::vector<double> pjetParams_;
-
-         JetResolution* ptRes_;
-         JetResolution* phiRes_;
 
    };
 

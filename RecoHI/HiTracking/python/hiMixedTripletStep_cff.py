@@ -24,6 +24,7 @@ hiMixedTripletClusters = cms.EDProducer("HITrackClusterRemover",
 
 
 # SEEDING LAYERS
+from RecoLocalTracker.SiStripClusterizer.SiStripClusterChargeCut_cfi import *
 hiMixedTripletSeedLayersA = cms.EDProducer("SeedingLayersEDProducer",
                                              layerList = cms.vstring('FPix1_pos+FPix2_pos+TEC1_pos', 'FPix1_neg+FPix2_neg+TEC1_neg'),
                                                                      #'FPix2_pos+TEC2_pos+TEC3_pos', 'FPix2_neg+TEC2_neg+TEC3_neg'),
@@ -41,6 +42,7 @@ hiMixedTripletSeedLayersA = cms.EDProducer("SeedingLayersEDProducer",
     matchedRecHits = cms.InputTag("siStripMatchedRecHits","matchedRecHit"),
     useRingSlector = cms.bool(True),
     TTRHBuilder = cms.string('WithTrackAngle'),
+    clusterChargeCut = cms.PSet(refToPSet_ = cms.string('SiStripClusterChargeCutNone')),
     minRing = cms.int32(1),
     maxRing = cms.int32(1),
     skipClusters = cms.InputTag('hiMixedTripletClusters')
@@ -67,6 +69,7 @@ hiMixedTripletSeedsA.ClusterCheckPSet.MaxNumberOfCosmicClusters = 50000000
 
 
 # SEEDING LAYERS
+from RecoLocalTracker.SiStripClusterizer.SiStripClusterChargeCut_cfi import *
 hiMixedTripletSeedLayersB = cms.EDProducer("SeedingLayersEDProducer",
                                    layerList = cms.vstring(
     #'BPix1+BPix2+TIB1',
@@ -132,8 +135,8 @@ hiMixedTripletPropagatorOpposite = TrackingTools.MaterialEffects.OppositeMateria
     ptMin = 1.0
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-hiMixedTripletChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+hiMixedTripletChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
     ComponentName = cms.string('hiMixedTripletChi2Est'),
     nSigma = cms.double(3.0),
     MaxChi2 = cms.double(16.0)

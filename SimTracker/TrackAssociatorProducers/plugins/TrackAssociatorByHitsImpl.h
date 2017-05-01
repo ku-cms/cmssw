@@ -16,18 +16,22 @@
 
 class TrackerTopology;
 
+namespace edm {
+  class EDProductGetter;
+}
+
 class TrackAssociatorByHitsImpl : public reco::TrackToTrackingParticleAssociatorBaseImpl {
   
  public:
 
   enum SimToRecoDenomType {denomnone,denomsim,denomreco};
 
-  typedef std::vector<std::pair<OmniClusterRef, TrackingParticleRef> > ClusterTPAssociationList;
   typedef std::pair<TrackingParticleRef, TrackPSimHitRef> SimHitTPPair;
   typedef std::vector<SimHitTPPair> SimHitTPAssociationList;
 
 
-  TrackAssociatorByHitsImpl( std::unique_ptr<TrackerHitAssociator> iAssociate,
+  TrackAssociatorByHitsImpl( edm::EDProductGetter const& productGetter,
+                             std::unique_ptr<TrackerHitAssociator> iAssociate,
                              TrackerTopology const* iTopo,
                              SimHitTPAssociationList const* iSimHitsTPAssoc,
                              SimToRecoDenomType iSimToRecoDenominator,
@@ -93,6 +97,7 @@ class TrackAssociatorByHitsImpl : public reco::TrackToTrackingParticleAssociator
 
 
   // ----- member data
+  edm::EDProductGetter const* productGetter_;
   std::unique_ptr<TrackerHitAssociator> associate;
   TrackerTopology const* tTopo;
   SimHitTPAssociationList const* simHitsTPAssoc;

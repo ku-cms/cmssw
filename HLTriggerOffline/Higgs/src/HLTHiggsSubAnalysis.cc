@@ -23,6 +23,7 @@
 #include "HLTriggerOffline/Higgs/src/MatchStruct.cc"
 
 #include "TPRegexp.h"
+#include "TRegexp.h"
 #include "TString.h"
 
 #include<set>
@@ -130,6 +131,30 @@ HLTHiggsSubAnalysis::HLTHiggsSubAnalysis(const edm::ParameterSet & pset,
                         << _analysisname << "' has a vector NminOneCuts with size "
                         << _NminOneCuts.size() << ", while it needs to be at least of size " 
                         <<  (9 + _minCandidates) << ".";
+            exit(-1);
+        }
+        if( (_NminOneCuts[0] || _NminOneCuts[1]) &&  _minCandidates  < 4 )
+        {
+            edm::LogError("HiggsValidation") << "In HLTHiggsSubAnalysis::HLTHiggsSubAnalysis, " 
+                        << "Incoherence found in the python configuration file!!\nThe SubAnalysis '" 
+                        << _analysisname << "' has a vector NminOneCuts with a dEtaqq of mqq cut on the least b-tagged jets of the first 4 jets while only requiring " 
+                        <<  _minCandidates << " jets.";
+            exit(-1);
+        }
+        if( _NminOneCuts[5] && _minCandidates < 3 )
+        {
+            edm::LogError("HiggsValidation") << "In HLTHiggsSubAnalysis::HLTHiggsSubAnalysis, " 
+                        << "Incoherence found in the python configuration file!!\nThe SubAnalysis '" 
+                        << _analysisname << "' has a vector NminOneCuts with a CSV3 cut while only requiring " 
+                        <<  _minCandidates << " jets.";
+            exit(-1);
+        }
+        if( (_NminOneCuts[2] || _NminOneCuts[4]) &&  _minCandidates < 2 )
+        {
+            edm::LogError("HiggsValidation") << "In HLTHiggsSubAnalysis::HLTHiggsSubAnalysis, " 
+                        << "Incoherence found in the python configuration file!!\nThe SubAnalysis '" 
+                        << _analysisname << "' has a vector NminOneCuts with a dPhibb or CSV2 cut using the second most b-tagged jet while only requiring " 
+                        <<  _minCandidates << " jet.";
             exit(-1);
         }
         for(std::vector<double>::const_iterator it = _NminOneCuts.begin(); it != _NminOneCuts.end(); ++it)
@@ -341,7 +366,7 @@ void HLTHiggsSubAnalysis::bookHistograms(DQMStore::IBooker &ibooker)
         double minHt   = paramsHt[1];
         double maxHt   = paramsHt[2];
 
-        _elements[nameVtxPlot] = ibooker.book1D(nameVtxPlot.c_str(), titlePu.c_str(), nBinsPu, minPu, maxPu);
+        if( (! _useNminOneCuts) || sources[i] == "rec" ) _elements[nameVtxPlot] = ibooker.book1D(nameVtxPlot.c_str(), titlePu.c_str(), nBinsPu, minPu, maxPu);
         if( _bookHtPlots ) _elements[nameHtPlot] = ibooker.book1D(nameHtPlot.c_str(), titleHt.c_str(), nBinsHt, minHt, maxHt);
         for (size_t j = 0 ; j < _hltPathsToCheck.size() ; j++){
                 //declare the efficiency vs interaction plots
@@ -352,7 +377,7 @@ void HLTHiggsSubAnalysis::bookHistograms(DQMStore::IBooker &ibooker)
                         shortpath = path.substr(0, path.rfind("_v"));
                 }
             std::string titlePassingPu = "nb of interations in the event passing path " + shortpath;
-            _elements[nameVtxPlot+"_"+shortpath] = ibooker.book1D(nameVtxPlot+"_"+shortpath, titlePassingPu.c_str(), nBinsPu, minPu, maxPu);
+            if( (! _useNminOneCuts) || sources[i] == "rec" ) _elements[nameVtxPlot+"_"+shortpath] = ibooker.book1D(nameVtxPlot+"_"+shortpath, titlePassingPu.c_str(), nBinsPu, minPu, maxPu);
 
             std::string titlePassingHt = "sum of jet pT in the event passing path " + shortpath;
             if( _bookHtPlots ) _elements[nameHtPlot+"_"+shortpath] = ibooker.book1D(nameHtPlot+"_"+shortpath, titlePassingHt.c_str(), nBinsHt, minHt, maxHt);
@@ -678,7 +703,7 @@ void HLTHiggsSubAnalysis::analyze(const edm::Event & iEvent, const edm::EventSet
 
         //fill the efficiency vs nb of interactions
         std::string nameVtxPlot = "trueVtxDist_"+_analysisname+"_"+u2str[it->first];
-        _elements[nameVtxPlot]->Fill(nbMCvtx);
+        if( (! _useNminOneCuts) || it->first == RECO ) _elements[nameVtxPlot]->Fill(nbMCvtx);
 
         //fill the efficiency vs sum pT of jets
         std::string nameHtPlot = "HtDist_"+_analysisname+"_"+u2str[it->first];
@@ -710,7 +735,7 @@ void HLTHiggsSubAnalysis::analyze(const edm::Event & iEvent, const edm::EventSet
             _elements[SummaryName]->Fill(refOfThePath);
             if (ispassTrigger) {
                 _elements[SummaryName+"_passingHLT"]->Fill(refOfThePath,1);
-                _elements[nameVtxPlot+"_"+fillShortPath.c_str()]->Fill(nbMCvtx);
+                if( (! _useNminOneCuts) || it->first == RECO ) _elements[nameVtxPlot+"_"+fillShortPath.c_str()]->Fill(nbMCvtx);
                 if( _bookHtPlots ) _elements[nameHtPlot+"_"+fillShortPath.c_str()]->Fill(Htmap[it->first]);
             }
             else {
@@ -744,13 +769,21 @@ const std::vector<unsigned int> HLTHiggsSubAnalysis::getObjectsType(const std::s
         // Check if it is needed this object for this trigger
         if( ! TString(hltPath).Contains(objTypeStr) )
         {
-            if( (objtriggernames[i] == EVTColContainer::PFJET && TString(hltPath).Contains("CSV") ) ||   // fix for ZnnHbb PFJET            
-                (objtriggernames[i] == EVTColContainer::PFMET && TString(hltPath).Contains("MHT")) )        // fix for ZnnHbb PFMET
-                objsType.insert(objtriggernames[i]);
-            else if (objtriggernames[i] == EVTColContainer::PHOTON && TString(hltPath).Contains("Diphoton") ) objsType.insert(objtriggernames[i]);    //case of the New Diphoton paths
+            if( (objtriggernames[i] == EVTColContainer::PFJET && TString(hltPath).Contains("WHbbBoost") ) ||   // fix for HLT_Ele27_WPLoose_Gsf_WHbbBoost_v
+                (objtriggernames[i] == EVTColContainer::PFJET && TString(hltPath).Contains("CSV") ) ||   // fix for ZnnHbb PFJET            
+                (objtriggernames[i] == EVTColContainer::PFMET && TString(hltPath).Contains("MHT")) ||        // fix for ZnnHbb PFMET
+                (objtriggernames[i] == EVTColContainer::PHOTON && TString(hltPath).Contains("Diphoton")) ) 
+            {
+                    objsType.insert(objtriggernames[i]);    //case of the New Diphoton paths
+            }
            continue;
         }
-        if( objtriggernames[i] == EVTColContainer::CALOMET && (TString(hltPath).Contains("PFMET") || TString(hltPath).Contains("MHT") ) ) continue; // fix for PFMET
+        if( ( objtriggernames[i] == EVTColContainer::CALOMET && (TString(hltPath).Contains("PFMET") || TString(hltPath).Contains("MHT") ) ) || // fix for PFMET
+        (objtriggernames[i] == EVTColContainer::PFJET && TString(hltPath).Contains("JetIdCleaned") && ! TString(hltPath).Contains(TRegexp("Jet[^I]"))) || // fix for Htaunu
+        (objtriggernames[i] == EVTColContainer::MUON && TString(hltPath).Contains("METNoMu")) ) // fix for VBFHToInv
+        {
+            continue;
+        }
 
         objsType.insert(objtriggernames[i]);
     }
@@ -1125,38 +1158,46 @@ void HLTHiggsSubAnalysis::passJetCuts(std::vector<MatchStruct> * matches, std::m
     std::sort(matches->begin(), matches->begin()+NbTag, matchesByDescendingBtag());
 
     if( _NminOneCuts[0] ) {
-        dEtaqq =  fabs((*matches)[2].eta - (*matches)[3].eta);
-        if( dEtaqq > _NminOneCuts[0] ) jetCutResult["dEtaqq"] = true;
-        else jetCutResult["dEtaqq"] = false;
+      jetCutResult["dEtaqq"] = false;
+      if (matches->size() > 2){
+	dEtaqq =  fabs((*matches)[2].eta - (*matches)[3].eta);
+	if( dEtaqq > _NminOneCuts[0] ) jetCutResult["dEtaqq"] = true;
+      }
     }
     
     if( _NminOneCuts[1] ) {
-        mqq = ((*matches)[2].lorentzVector + (*matches)[3].lorentzVector).M();
-        if( mqq > _NminOneCuts[1] ) jetCutResult["mqq"] = true;
-        else jetCutResult["mqq"] = false;
+      jetCutResult["mqq"] = false;
+      if (matches->size() > 2){
+	mqq = ((*matches)[2].lorentzVector + (*matches)[3].lorentzVector).M();
+	if( mqq > _NminOneCuts[1] ) jetCutResult["mqq"] = true;
+      }
     }
     
     if( _NminOneCuts[2] ) {
-        dPhibb = fmod(fabs((*matches)[0].phi - (*matches)[1].phi),3.1416);
-        if( dPhibb < _NminOneCuts[2] ) jetCutResult["dPhibb"] = true;
-        else jetCutResult["dPhibb"] = false;
+      jetCutResult["dPhibb"] = false;
+      if (matches->size() > 1){
+	dPhibb = fmod(fabs((*matches)[0].phi - (*matches)[1].phi),3.1416);
+	if( dPhibb < _NminOneCuts[2] ) jetCutResult["dPhibb"] = true;
+      }
     }
 
     if( _NminOneCuts[4] ) {
-        CSV2 = (*matches)[1].bTag;
-        std::string nameCSV2plot = "CSV2";
-
-        if( CSV2 > _NminOneCuts[4] ) jetCutResult[nameCSV2plot] = true;
-        else jetCutResult[nameCSV2plot] = false;
-        }
+      std::string nameCSV2plot = "CSV2";	
+      jetCutResult[nameCSV2plot] = false;
+      if (matches->size() > 1){
+	CSV2 = (*matches)[1].bTag;
+	if( CSV2 > _NminOneCuts[4] ) jetCutResult[nameCSV2plot] = true;
+      }
+    }
 
     if( _NminOneCuts[5] ) {
-        CSV3 = (*matches)[2].bTag;
-        std::string nameCSV3plot = "CSV3";
-
-        if( CSV3 > _NminOneCuts[5] ) jetCutResult[nameCSV3plot] = true;
-        else jetCutResult[nameCSV3plot] = false;
-        }
+      std::string nameCSV3plot = "CSV3";	
+      jetCutResult[nameCSV3plot] = false;
+      if (matches->size() > 2){
+	CSV3 = (*matches)[2].bTag;
+	if( CSV3 > _NminOneCuts[5] ) jetCutResult[nameCSV3plot] = true;
+      }
+    }
 
 
     if( _NminOneCuts[3] ) {

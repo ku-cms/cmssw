@@ -10,7 +10,7 @@ import FWCore.ParameterSet.Config as cms
 
 # common parameters
 VtxSmearedCommon = cms.PSet(
-    src = cms.InputTag("generator"),
+    src = cms.InputTag("generator", "unsmeared"),
     readDB = cms.bool(False)
 )
 # Gaussian smearing
@@ -406,6 +406,88 @@ NominalCollision2015VtxSmearingParameters = cms.PSet(
     Y0 = cms.double(0.0),
     Z0 = cms.double(0.0)
 )
+ZeroTeslaRun247324CollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(80.0),
+    Emittance = cms.double(1.070e-5),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(4.125),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.08621),
+    Y0 = cms.double(0.1657),
+    Z0 = cms.double(-1.688)
+)
+
+# From 2015A 0T data
+# Centroid absolute positions extracted from fills:
+# X = 0.059395  cm
+# Y = 0.099686  cm
+# Z = -1.722240 cm
+#
+# BPIX absolute position extracted from first collision alignment:
+# X = -0.0259503 cm
+# Y = -0.07004   cm
+# Z = -0.498917  cm
+Realistic50ns13TeVCollisionZeroTeslaVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(65.0),
+    Emittance = cms.double(5.411e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.3),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.08533),
+    Y0 = cms.double(0.16973),
+    Z0 = cms.double(-1.2230)
+)
+
+# From 2015B 3.8T data
+# Centroid absolute positions extracted from fill 4008:
+# X =  0.07798 cm
+# Y =  0.09714 cm
+# Z = -1.610   cm
+#
+# BPIX absolute position extracted from PCL-like alignment run after magnet ramp-up:
+# X = -0.026837  cm
+# Y = -0.0715252 cm
+# Z = -0.511453  cm
+Realistic50ns13TeVCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(65.0),
+    Emittance = cms.double(5.411e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.3),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.10482),
+    Y0 = cms.double(0.16867),
+    Z0 = cms.double(-1.0985)
+)
+
+# From 2016B 3.8T data
+# BS parameters extracted from fills 4895 - 4935:
+# X0         = 0.064870 +/- 4.9575E-07 [cm]
+# Y0         = 0.093639 +/- 4.9233E-07 [cm]
+# Z0         = 0.420085 +/- 4.1102E-04 [cm]
+# sigmaZ0    = 3.645533 +/- 2.9064E-04 [cm]
+#
+# From LHC calculator, emittance is 4.906e-8 cm 
+# https://lpc.web.cern.ch/lpc/lumi2.html
+# 
+# BPIX absolute position:
+# X = -0.0267572 cm
+# Y = -0.0759102 cm
+# Z = -0.511428  cm
+Realistic25ns13TeV2016CollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(40.0),
+    Emittance = cms.double(4.906e-8),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(3.65),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.09163),
+    Y0 = cms.double(0.16955),
+    Z0 = cms.double(0.9315 )
+)
+
 # Test HF offset
 ShiftedCollision2015VtxSmearingParameters = cms.PSet(
     Phi = cms.double(0.0),
@@ -417,4 +499,67 @@ ShiftedCollision2015VtxSmearingParameters = cms.PSet(
     X0 = cms.double(1.0),
     Y0 = cms.double(0.0),
     Z0 = cms.double(0.0)
+)
+Shifted5mmCollision2015VtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(65.0),
+    Emittance = cms.double(5.411e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.3),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.5),
+    Y0 = cms.double(0.0),
+    Z0 = cms.double(0.0)
+)
+Shifted15mmCollision2015VtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(65.0),
+    Emittance = cms.double(5.411e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.3),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(1.5),
+    Y0 = cms.double(0.0),
+    Z0 = cms.double(0.0)
+)
+
+# Estimate for 2015 PbPb collisions, based on feedback from accelerator                                                                                  
+# Beamspot centroid shifted to match pp expectation for 2015                                                                                             
+NominalHICollision2015VtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(60.0),
+    Emittance = cms.double(1.70e-07),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(7.06),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.0322),
+    Y0 = cms.double(0.),
+    Z0 = cms.double(0.)
+)
+
+# Update based on latest beta* presented at the WGM
+# Beamspot centroid updated to according to the current pp conditions (Realistic50ns13TeVCollisionZeroTesla)
+UpdatedHICollision2015VtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(80.0),
+    Emittance = cms.double(1.70e-07),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(7.06),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.08533),
+    Y0 = cms.double(0.16973),
+    Z0 = cms.double(-1.2230)
+)
+
+# Estimate for 2015 pp collisions at 5.02 TeV, based on feedback from accelerator:  beta* ~ 400cm, normalized emittance = 2.5 um, SigmaZ similar to RunIIWinter15GS
+Nominal5TeVpp2015VtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(400.0),
+    Emittance = cms.double(1.0e-07),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.5),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.1044),
+    Y0 = cms.double(0.1676),
+    Z0 = cms.double(0.6707)
 )

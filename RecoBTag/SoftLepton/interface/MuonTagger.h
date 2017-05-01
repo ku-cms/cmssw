@@ -6,27 +6,28 @@
 #define RecoBTag_SoftLepton_MuonTagger_h
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "CommonTools/Utils/interface/TMVAEvaluator.h"
 #include "RecoBTau/JetTagComputer/interface/JetTagComputer.h"
 #include "RecoBTag/SoftLepton/interface/LeptonSelector.h"
-#include "RecoBTag/SoftLepton/interface/MvaSoftMuonEstimator.h"
-
-#include "TRandom3.h"
+#include <memory>
 
 class MuonTagger : public JetTagComputer {
 
   public:
   
     MuonTagger(const edm::ParameterSet&);
-    ~MuonTagger();
-    
-    virtual float discriminator(const TagInfoHelper& tagInfo) const;
+    void initialize(const JetTagComputerRecord &) override;
+    virtual float discriminator(const TagInfoHelper& tagInfo) const override;
     
   private:
-    
     btag::LeptonSelector m_selector;
-    TRandom3* random;
-    edm::FileInPath WeightFile;
-    MvaSoftMuonEstimator* mvaID;
+    const bool m_useCondDB;
+    const std::string m_gbrForestLabel;
+    const edm::FileInPath m_weightFile;
+    const bool m_useGBRForest;
+    const bool m_useAdaBoost;
+
+    std::unique_ptr<TMVAEvaluator> mvaID;
 };
 
 #endif

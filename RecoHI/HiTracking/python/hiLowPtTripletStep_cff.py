@@ -42,6 +42,8 @@ hiLowPtTripletStepPixelTracks = cms.EDProducer("PixelTrackProducer",
 	  ComponentName = cms.string("GlobalTrackingRegionWithVerticesProducer"),
 	  RegionPSet = cms.PSet(
             precise = cms.bool(True),
+            useMultipleScattering = cms.bool(False),
+            useFakeVertices       = cms.bool(False),            
             beamSpot = cms.InputTag("offlineBeamSpot"),
             useFixedError = cms.bool(False),
             nSigmaZ = cms.double(4.0),
@@ -111,8 +113,8 @@ hiLowPtTripletStepTrajectoryFilter = TrackingTools.TrajectoryFiltering.Trajector
     minPt = 0.4
     )
 
-import TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi
-hiLowPtTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimatorESProducer_cfi.Chi2MeasurementEstimator.clone(
+import TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi
+hiLowPtTripletStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi.Chi2MeasurementEstimator.clone(
         ComponentName = cms.string('hiLowPtTripletStepChi2Est'),
             nSigma = cms.double(3.0),
             MaxChi2 = cms.double(9.0)
@@ -158,18 +160,25 @@ hiLowPtTripletStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProd
 import RecoHI.HiTracking.hiMultiTrackSelector_cfi
 hiLowPtTripletStepSelector = RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiMultiTrackSelector.clone(
     src='hiLowPtTripletStepTracks',
+    useAnyMVA = cms.bool(True),
+    GBRForestLabel = cms.string('HIMVASelectorIter5'),
+    GBRForestVars = cms.vstring(['chi2perdofperlayer', 'dxyperdxyerror', 'dzperdzerror', 'relpterr', 'nhits', 'nlayers', 'eta']),
     trackSelectors= cms.VPSet(
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiLooseMTS.clone(
     name = 'hiLowPtTripletStepLoose',
+    useMVA = cms.bool(False)
     ), #end of pset
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiTightMTS.clone(
     name = 'hiLowPtTripletStepTight',
     preFilterName = 'hiLowPtTripletStepLoose',
+    useMVA = cms.bool(True),
+    minMVA = cms.double(-0.58)
     ),
     RecoHI.HiTracking.hiMultiTrackSelector_cfi.hiHighpurityMTS.clone(
     name = 'hiLowPtTripletStep',
     preFilterName = 'hiLowPtTripletStepTight',
-    # min_nhits = 14
+    useMVA = cms.bool(True),
+    minMVA = cms.double(0.35)
     ),
     ) #end of vpset
     ) #end of clone

@@ -11,12 +11,15 @@ using namespace std;
 #include "DQMServices/Core/interface/MonitorElement.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 
 GlobalRecHitsAnalyzer::GlobalRecHitsAnalyzer(const edm::ParameterSet& iPSet) :
   fName(""), verbosity(0), frequency(0), label(""), getAllProvenances(false),
-  printProvenanceInfo(false), count(0)
+  printProvenanceInfo(false), trackerHitAssociatorConfig_(iPSet, consumesCollector()), count(0)
 {
+  consumesMany<edm::SortedCollection<HBHERecHit, edm::StrictWeakOrdering<HBHERecHit> > >();
+  consumesMany<edm::SortedCollection<HFRecHit, edm::StrictWeakOrdering<HFRecHit> > >();
+  consumesMany<edm::SortedCollection<HORecHit, edm::StrictWeakOrdering<HORecHit> > >();
   std::string MsgLoggerCat = "GlobalRecHitsAnalyzer_GlobalRecHitsAnalyzer";
 
   // get information from parameter set
@@ -45,8 +48,6 @@ GlobalRecHitsAnalyzer::GlobalRecHitsAnalyzer(const edm::ParameterSet& iPSet) :
   MuCSCSrc_ = iPSet.getParameter<edm::InputTag>("MuCSCSrc");
   MuRPCSrc_ = iPSet.getParameter<edm::InputTag>("MuRPCSrc");
   MuRPCSimSrc_ = iPSet.getParameter<edm::InputTag>("MuRPCSimSrc");
-
-  conf_ = iPSet;
 
   // fix for consumes
   ECalUncalEBSrc_Token_ = consumes<EBUncalibratedRecHitCollection>(iPSet.getParameter<edm::InputTag>("ECalUncalEBSrc"));
@@ -628,10 +629,10 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
     validhcalHits = false;
   }  
 
-  MapType fHBEnergySimHits;
-  MapType fHEEnergySimHits;
-  MapType fHOEnergySimHits;
-  MapType fHFEnergySimHits;
+  std::map<HcalDetId,float> fHBEnergySimHits;
+  std::map<HcalDetId,float> fHEEnergySimHits;
+  std::map<HcalDetId,float> fHOEnergySimHits;
+  std::map<HcalDetId,float> fHFEnergySimHits;
   if (validhcalHits) {
     const edm::PCaloHitContainer *simhitResult = hcalHits.product();
   
@@ -640,19 +641,18 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
 	 ++simhits) {
       
       HcalDetId detId(simhits->id());
-      uint32_t cellid = detId.rawId();
       
       if (detId.subdet() == sdHcalBrl){  
-	fHBEnergySimHits[cellid] += simhits->energy(); 
+	fHBEnergySimHits[detId] += simhits->energy(); 
       }
       if (detId.subdet() == sdHcalEC){  
-	fHEEnergySimHits[cellid] += simhits->energy(); 
+	fHEEnergySimHits[detId] += simhits->energy(); 
       }    
       if (detId.subdet() == sdHcalOut){  
-	fHOEnergySimHits[cellid] += simhits->energy(); 
+	fHOEnergySimHits[detId] += simhits->energy(); 
       }    
       if (detId.subdet() == sdHcalFwd){  
-	fHFEnergySimHits[cellid] += simhits->energy(); 
+	fHFEnergySimHits[detId] += simhits->energy(); 
       }    
     }
   }
@@ -737,7 +737,7 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
 	  if (deltaphi > PI) { deltaphi = 2.0 * PI - deltaphi;}
 	  
 	  mehHcalRes[0]->Fill(jhbhe->energy() - 
-			      fHBEnergySimHits[cell.rawId()]);
+			      fHBEnergySimHits[cell]);
 	}
 	
 	if (cell.subdet() == sdHcalEC) {
@@ -752,7 +752,7 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
 	  if (fPhi > maxHEPhi) { deltaphi = fPhi - maxHEPhi;}
 	  if (deltaphi > PI) { deltaphi = 2.0 * PI - deltaphi;}
 	  mehHcalRes[1]->Fill(jhbhe->energy() - 
-			      fHEEnergySimHits[cell.rawId()]);
+			      fHEEnergySimHits[cell]);
 	}
       }
     } // end loop through collection
@@ -823,7 +823,7 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
 	  if (fPhi > maxHFPhi) { deltaphi = fPhi - maxHFPhi;}
 	  if (deltaphi > PI) { deltaphi = 2.0 * PI - deltaphi;}
 	  
-	  mehHcalRes[2]->Fill(jhf->energy()-fHFEnergySimHits[cell.rawId()]);
+	  mehHcalRes[2]->Fill(jhf->energy()-fHFEnergySimHits[cell]);
 	}
       }
     } // end loop through collection
@@ -869,7 +869,7 @@ void GlobalRecHitsAnalyzer::fillHCal(const edm::Event& iEvent,
 	  float deltaphi = maxHOPhi - fPhi;
 	  if (fPhi > maxHOPhi) { deltaphi = fPhi - maxHOPhi;}
 	  if (deltaphi > PI) { deltaphi = 2.0 * PI - deltaphi;}
-	  mehHcalRes[3]->Fill(jho->energy()-fHOEnergySimHits[cell.rawId()]);
+	  mehHcalRes[3]->Fill(jho->energy()-fHOEnergySimHits[cell]);
 	}
       }
     } // end loop through collection
@@ -892,7 +892,7 @@ void GlobalRecHitsAnalyzer::fillTrk(const edm::Event& iEvent,
 {
   //Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHandle;
-  iSetup.get<IdealGeometryRecord>().get(tTopoHandle);
+  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
   const TrackerTopology* const tTopo = tTopoHandle.product();
 
 
@@ -912,7 +912,7 @@ void GlobalRecHitsAnalyzer::fillTrk(const edm::Event& iEvent,
     validstrip = false;
   }  
   
-  TrackerHitAssociator associate(iEvent,conf_);
+  TrackerHitAssociator associate(iEvent, trackerHitAssociatorConfig_);
   
   edm::ESHandle<TrackerGeometry> pDD;
   iSetup.get<TrackerDigiGeometryRecord>().get(pDD);

@@ -24,6 +24,9 @@ namespace CondFormats_HcalObjects {
  
     HcalCalibrationQIEData mycalqie();
     std::vector<HcalCalibrationQIECoder> mycalqieVec;
+
+    HcalQIETypes myqietype();
+    std::vector<HcalQIEType> myqietypevec;
  
     HcalElectronicsMap mymap;
     std::vector<HcalElectronicsMap::PrecisionItem> mymap2;
@@ -102,6 +105,10 @@ namespace CondFormats_HcalObjects {
     std::vector<HcalInterpolatedPulse> myHcalInterpolatedPulseVec;
     HBHEChannelGroups myHBHEChannelGroups;
     HcalInterpolatedPulseColl myHcalInterpolatedPulseColl;
+
+    // HBHE negative energy filter
+    std::vector<PiecewiseScalingPolynomial> myPiecewiseScalingPolynomialVec;
+    HBHENegativeEFilter myHBHENegativeEFilter;
   };
 }
 
