@@ -184,18 +184,17 @@ EventShapeVariables::D(double r) const
 double
 EventShapeVariables::thrust( int& numberOfSteps = 100 ) const
 {
-  const double deltaPhi=2*pi/numberOfSteps;
-  const double deltaRho=pi/numberOfSteps;
+  const double deltaPhi=2*TMath::Pi()/numberOfSteps;
+  const double deltaRho=TMath::Pi()/numberOfSteps;
   double thrust=-1;
   double phi=0;
   double rho=0;
   double area = 0;
-  double asum = 0;
-  for ( int i = 0; i < (int)inputVectors_.size(); ++i ){
+  for ( unsigned int i = 0; i < (int)inputVectors_.size(); ++i ){
   	area+=sqrt(inputVectors_[i].X()*inputVectors_[i].X()+inputVectors_[i].Y()*inputVectors_[i].Y()+inputVectors_[i].Z()*inputVectors_[i].Z());
   }
   for(unsigned int i=0; i<numberOfSteps; ++i){
-    	phi+=deltaPhi;
+    	phi+=deltaPhi; 
     	for(unsigned int k=0; k<numberOfSteps; ++k){
         	rho+=deltaRho;
         	double asum=0;
@@ -217,15 +216,13 @@ EventShapeVariables::thrust( int& numberOfSteps = 100 ) const
 double
 EventShapeVariables::thrustminor( int& numberOfSteps = 100 ) const
 {
-  const double deltaPhi=2*pi/numberOfSteps;
-  const double deltaRho=pi/numberOfSteps;
+  const double deltaPhi=2*TMath::Pi()/numberOfSteps;
+  const double deltaRho=TMath::Pi()/numberOfSteps;
   double thrust=10;
   double phi=0;
   double rho=0;
   double area = 0;
-  double asum = 0;
-  double xs
-  for ( int i = 0; i < (int)inputVectors_.size(); ++i ){
+  for ( unsigned int i = 0; i < (int)inputVectors_.size(); ++i ){
         area+=sqrt(inputVectors_[i].X()*inputVectors_[i].X()+inputVectors_[i].Y()*inputVectors_[i].Y()+inputVectors_[i].Z()*inputVectors_[i].Z());
   }
   for(unsigned int i=0; i<numberOfSteps; ++i){
@@ -234,10 +231,13 @@ EventShapeVariables::thrustminor( int& numberOfSteps = 100 ) const
                 rho+=deltaRho;
                 double asum=0;
                 double tmp=2;
+		double xs=0;
+		double ys=0; 
+		double zs=0;
                 for(unsigned int j=0; j<inputVectors_.size(); ++j){
-                        xs = sin(phi)*cos(rho)*inputVectors[j].Z() - sin(rho)*inputVectors[j].Y();
-                	ys = sin(rho)*inputVectors[j].X() - cos(phi)*cos(rho)*inputVectors[j].Z();
-                	zs = cos(phi)*cos(rho)*inputVectors[j].Y() - sin(phi)*cos(rho)*inputVectors[j].X();
+                        xs = sin(phi)*cos(rho)*inputVectorsi_[j].Z() - sin(rho)*inputVectors_[j].Y();
+                	ys = sin(rho)*inputVectors_[j].X() - cos(phi)*cos(rho)*inputVectors_[j].Z();
+                	zs = cos(phi)*cos(rho)*inputVectors_[j].Y() - sin(phi)*cos(rho)*inputVectors_[j].X();
                 	asum+=sqrt(xs*xs+ys*ys+zs*zs);
 		}
                 tmp=asum/area;
@@ -252,4 +252,3 @@ EventShapeVariables::thrustminor( int& numberOfSteps = 100 ) const
 
 
 }
-
